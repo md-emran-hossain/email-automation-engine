@@ -20,7 +20,7 @@ import {
   type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useEffect, useState, useCallback, type MouseEvent } from 'react';
+import { useEffect, useState, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import { generateWorkflowGraph } from '../../components/workflow/utils/graph-transformer';
 import { StepNode } from '../../components/workflow/builder/StepNode';
 import { TriggerNode } from '../../components/workflow/builder/TriggerNode';
@@ -98,6 +98,7 @@ export default function WorkflowBuilder() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
 
   const handleAddNode = useCallback((parentId: string | null, branch: 'linear' | true | false) => {
     setAddNodeConfig({ parentId, branch });
@@ -115,6 +116,7 @@ export default function WorkflowBuilder() {
         workflow?.isActive ?? false,
         handleAddNode,
         handleAddTrigger,
+        !!draggingNodeId,
       );
       setNodes(graph.nodes);
       setEdges(
@@ -124,7 +126,86 @@ export default function WorkflowBuilder() {
         })),
       );
     }
-  }, [triggers, steps, workflow?.isActive, handleAddNode]);
+  }, [triggers, steps, workflow?.isActive, handleAddNode, draggingNodeId]);
+
+  const onNodeDragStart = useCallback((event: MouseEvent | TouchEvent, node: Node) => {
+    if (node.id.startsWith('step-')) {
+      setDraggingNodeId(node.id);
+    }
+  }, []);
+
+  const onNodeDragStop = useCallback(
+    (event: MouseEvent | TouchEvent, node: Node) => {
+      setDraggingNodeId(null);
+      if (!node.id.startsWith('step-')) return;
+
+      const draggedRect = {
+        x: node.position.x,
+        y: node.position.y,
+        w: node.measured?.width || 280,
+        h: node.measured?.height || 80,
+      };
+
+      const stepId = node.id.replace('step-', '');
+
+      const targetAddNode = nodes.find((n) => {
+        if (
+          n.type !== 'addStepNode' ||
+          n.id === `add-step-${stepId}-linear` ||
+          n.id === `add-step-${stepId}-true` ||
+          n.id === `add-step-${stepId}-false`
+        ) {
+          return false;
+        }
+
+        const targetRect = {
+          x: n.position.x,
+          y: n.position.y,
+          w: n.measured?.width || 60,
+          h: n.measured?.height || 60,
+        };
+
+        return (
+          draggedRect.x < targetRect.x + targetRect.w &&
+          draggedRect.x + draggedRect.w > targetRect.x &&
+          draggedRect.y < targetRect.y + targetRect.h &&
+          draggedRect.y + draggedRect.h > targetRect.y
+        );
+      });
+
+      if (targetAddNode) {
+        const rawParentId = targetAddNode.data.parentId as string | undefined;
+        const parentId = rawParentId ? rawParentId : null;
+
+        let branch = targetAddNode.data.branch;
+        if (branch === 'true') branch = true;
+        else if (branch === 'false') branch = false;
+        else if (branch !== true && branch !== false) branch = 'linear';
+
+        void (async () => {
+          try {
+            await api.post(
+              `/tenants/${currentTenant?.id}/workflows/${workflowId}/steps/${stepId}/reorder`,
+              {
+                parentId,
+                branch,
+              },
+            );
+            void queryClient.invalidateQueries({ queryKey: ['workflow-steps'] });
+          } catch (err) {
+            const error = err as AxiosError<{ message: string }>;
+            console.error(error);
+            alert(error.response?.data?.message || error.message || 'Failed to move step');
+            void queryClient.invalidateQueries({ queryKey: ['workflow-steps'] });
+          }
+        })();
+      } else {
+        // If not dropped on a target, invalidate to snap back to layout
+        void queryClient.invalidateQueries({ queryKey: ['workflow-steps'] });
+      }
+    },
+    [nodes, currentTenant?.id, workflowId, queryClient],
+  );
 
   const addStepMutation = useMutation({
     mutationFn: async ({
@@ -240,7 +321,7 @@ export default function WorkflowBuilder() {
     },
   });
 
-  const onNodeClick = useCallback((_: MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_: ReactMouseEvent, node: Node) => {
     if (node.type === 'addTriggerNode' || node.type === 'addStepNode' || node.type === 'exitNode') {
       return;
     }
@@ -285,16 +366,23 @@ export default function WorkflowBuilder() {
       <div className="flex-1 w-full h-full bg-gray-50/50 dark:bg-zinc-950/50 relative">
         <ReactFlow
           nodes={nodes}
-          edges={edges}
+          edges={edges.map((e) => ({
+            ...e,
+            hidden: draggingNodeId
+              ? e.source === draggingNodeId || e.target === draggingNodeId
+              : false,
+          }))}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDragStop={onNodeDragStop}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           nodeTypes={nodeTypes}
           fitView
           className="bg-dot-pattern"
           proOptions={{ hideAttribution: true }}
-          nodesDraggable={!workflow.isActive}
+          nodesDraggable={!workflow?.isActive}
           nodesConnectable={false}
           elementsSelectable={true}
         >

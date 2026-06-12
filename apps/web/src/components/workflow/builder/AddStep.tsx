@@ -7,6 +7,7 @@ export function AddStep({
     parentId: string | null;
     branch: 'linear' | true | false;
     onAddNode: (parentId: string | null, branch: 'linear' | true | false) => void;
+    isDragging?: boolean;
   };
 }) {
   return (
@@ -18,11 +19,13 @@ export function AddStep({
           e.stopPropagation();
           data.onAddNode(data.parentId, data.branch);
         }}
-        className="w-8 h-8 bg-white dark:bg-zinc-800 border-2 border-dashed border-gray-300 dark:border-zinc-700 rounded-full flex items-center justify-center hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 hover:scale-110 transition-all z-10 shadow-sm cursor-pointer group"
+        className={`w-8 h-8 rounded-full flex items-center justify-center transition-all z-10 shadow-sm cursor-pointer group border-2 border-dashed
+          ${data.isDragging ? 'border-indigo-400 bg-indigo-50/50 dark:bg-indigo-900/10 scale-[1.3] animate-pulse' : 'bg-white dark:bg-zinc-800 border-gray-300 dark:border-zinc-700 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 hover:scale-110'}
+        `}
         title="Add step"
       >
         <svg
-          className="w-5 h-5 text-gray-400 dark:text-zinc-500 group-hover:text-indigo-500 transition-colors"
+          className={`w-5 h-5 transition-colors ${data.isDragging ? 'text-indigo-500' : 'text-gray-400 dark:text-zinc-500 group-hover:text-indigo-500'}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"

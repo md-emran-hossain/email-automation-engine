@@ -30,6 +30,7 @@ export function generateWorkflowGraph(
   isActive: boolean,
   onAddNode: (parentId: string | null, branch: 'linear' | true | false) => void,
   onAddTrigger: () => void,
+  isDragging: boolean = false,
 ): { nodes: Node[]; edges: Edge[] } {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -98,7 +99,7 @@ export function generateWorkflowGraph(
       id: addStepBtnId,
       type: 'addStepNode',
       position: { x: 0, y: 0 },
-      data: { onAddNode },
+      data: { onAddNode, isDragging },
     });
     dagreGraph.setNode(addStepBtnId, { width: 60, height: 60 });
 
@@ -123,6 +124,8 @@ export function generateWorkflowGraph(
         type: 'smoothstep',
       });
       dagreGraph.setEdge(addStepBtnId, `step-${firstStep.id}`);
+    } else {
+      addExitNode(addStepBtnId, 'empty-workflow-exit');
     }
   } else if (isActive && triggers.length > 0) {
     if (firstStep) {
@@ -204,7 +207,7 @@ export function generateWorkflowGraph(
           id: addTrueBtnId,
           type: 'addStepNode',
           position: { x: 0, y: 0 },
-          data: { parentId: step.id, branch: true, onAddNode },
+          data: { parentId: step.id, branch: true, onAddNode, isDragging },
         });
         dagreGraph.setNode(addTrueBtnId, { width: 60, height: 60 });
         edges.push({
@@ -225,6 +228,8 @@ export function generateWorkflowGraph(
             type: 'smoothstep',
           });
           dagreGraph.setEdge(addTrueBtnId, `step-${trueStep.id}`);
+        } else {
+          addExitNode(addTrueBtnId, `${step.id}-true-exit`);
         }
 
         // False branch add node
@@ -233,7 +238,7 @@ export function generateWorkflowGraph(
           id: addFalseBtnId,
           type: 'addStepNode',
           position: { x: 0, y: 0 },
-          data: { parentId: step.id, branch: false, onAddNode },
+          data: { parentId: step.id, branch: false, onAddNode, isDragging },
         });
         dagreGraph.setNode(addFalseBtnId, { width: 60, height: 60 });
         edges.push({
@@ -254,6 +259,8 @@ export function generateWorkflowGraph(
             type: 'smoothstep',
           });
           dagreGraph.setEdge(addFalseBtnId, `step-${falseStep.id}`);
+        } else {
+          addExitNode(addFalseBtnId, `${step.id}-false-exit`);
         }
       } else {
         if (trueStep) {
@@ -293,7 +300,7 @@ export function generateWorkflowGraph(
           id: addLinearBtnId,
           type: 'addStepNode',
           position: { x: 0, y: 0 },
-          data: { parentId: step.id, branch: 'linear', onAddNode },
+          data: { parentId: step.id, branch: 'linear', onAddNode, isDragging },
         });
         dagreGraph.setNode(addLinearBtnId, { width: 60, height: 60 });
         edges.push({
@@ -312,6 +319,8 @@ export function generateWorkflowGraph(
             type: 'smoothstep',
           });
           dagreGraph.setEdge(addLinearBtnId, `step-${nextStep.id}`);
+        } else {
+          addExitNode(addLinearBtnId, `${step.id}-linear-exit`);
         }
       } else {
         if (nextStep) {

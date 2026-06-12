@@ -25,8 +25,8 @@ describe('graph-transformer', () => {
       () => {},
     );
 
-    expect(result.nodes).toHaveLength(3);
-    expect(result.edges).toHaveLength(1);
+    expect(result.nodes).toHaveLength(4);
+    expect(result.edges).toHaveLength(2);
 
     const triggerNode = result.nodes[0];
     expect(triggerNode).toBeDefined();
@@ -78,8 +78,8 @@ describe('graph-transformer', () => {
       () => {},
     );
 
-    expect(result.nodes).toHaveLength(7); // 1 trigger, 1 add first step, 2 steps, 2 add step btns, 1 add trigger
-    expect(result.edges).toHaveLength(5); // trigger->addFirst, addFirst->step1, step1->addStep1, addStep1->step2, step2->addStep2
+    expect(result.nodes).toHaveLength(8); // 1 trigger, 1 add first step, 2 steps, 2 add step btns, 1 add trigger, 1 exit
+    expect(result.edges).toHaveLength(6); // trigger->addFirst, addFirst->step1, step1->addStep1, addStep1->step2, step2->addStep2, addStep2->exit
 
     // Check Trigger Node
     expect(result.nodes.find((n) => n.id === 'trigger-trigger-1')).toBeDefined();

@@ -6,6 +6,8 @@ Phase 3: Runtime Core completed.
 
 Phase 4: Core Actions completed.
 
+Phase 5: Frontend Builder in progress.
+
 ## Completed
 
 - Created monorepo planning directory.
@@ -106,6 +108,14 @@ Phase 4: Core Actions completed.
   - Added spec files and contract tests for all 5 new handlers and 5 new message schemas.
   - All 5 gates pass: format, lint, typecheck, test, build.
 
+- Implemented Phase 5 Frontend Builder foundations:
+  - Standardized Lucide React icons across all modals and components.
+  - Built domain-driven React Query hooks (`useWorkflow`, `useWorkflowSteps`, `useWorkflowTriggers`) to decouple data fetching and mutations from UI.
+  - Refactored `WorkflowBuilder.tsx` to operate purely as a React Flow graph orchestrator.
+  - Extracted dynamic UI form schemas (`StepFormSchema`, `TriggerFormSchema`) directly into `@email-automation-engine/shared` Zod contracts to ensure full "Write Once, Validate Everywhere" parity between the API payload and React Hook Form.
+  - Eradicated all `any` casting and generic hacks from builder form validation.
+  - Stripped out redundant backend validation methods (`validateDelayConfig`) because the Zod validation pipes fully process the shared schemas automatically.
+
 ## Blockers
 
 - None.
@@ -167,4 +177,4 @@ Phase 4: Core Actions completed.
 
 ## Next Exact Task
 
-Begin Phase 5: Frontend Builder, starting with the workflow list and builder UI.
+Continue Phase 5: Frontend Builder. We have completed the Workflow Builder UI refactor (domain-driven hooks, React Flow integration, Zod schema validation forms). Next is likely the workflow list view, tenant creation/management, and execution summary.

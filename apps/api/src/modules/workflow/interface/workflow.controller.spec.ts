@@ -29,7 +29,7 @@ describe('WorkflowController', () => {
     findStep: Mock;
     updateStep: Mock;
     deleteStep: Mock;
-    reorderSteps: Mock;
+    reorderStep: Mock;
   };
   let exitConditionService: {
     getExitConditions: Mock;
@@ -61,7 +61,7 @@ describe('WorkflowController', () => {
       findStep: vi.fn(),
       updateStep: vi.fn(),
       deleteStep: vi.fn(),
-      reorderSteps: vi.fn(),
+      reorderStep: vi.fn(),
     };
     exitConditionService = {
       getExitConditions: vi.fn(),
@@ -125,6 +125,18 @@ describe('WorkflowController', () => {
       const result = await controller.findStep('tenant-1', 'workflow-1', 'step-1');
       expect(result).toEqual(mockStep);
       expect(stepService.findStep).toHaveBeenCalledWith('tenant-1', 'workflow-1', 'step-1');
+    });
+  });
+
+  describe('reorderStep', () => {
+    it('should delegate to service reorderStep', async () => {
+      const mockResponse = { id: 'step-1', parentWorkflowStepId: 'step-2' };
+      stepService.reorderStep.mockResolvedValue(mockResponse);
+
+      const dto = { parentId: 'step-2', branch: 'linear' as const };
+      const result = await controller.reorderStep('tenant-1', 'workflow-1', 'step-1', dto);
+      expect(result).toEqual(mockResponse);
+      expect(stepService.reorderStep).toHaveBeenCalledWith('tenant-1', 'workflow-1', 'step-1', dto);
     });
   });
 

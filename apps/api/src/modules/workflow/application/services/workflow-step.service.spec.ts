@@ -1,15 +1,13 @@
 import { describe, expect, it, beforeEach, vi, type Mock } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { WorkflowStepService } from './workflow-step.service';
-import type { WorkflowStep } from '../../domain/aggregates/workflow-step.aggregate';
 import type { Workflow } from '../../domain/aggregates/workflow.aggregate';
 import type { WorkflowService } from './workflow.service';
 
 describe('WorkflowStepService', () => {
   let service: WorkflowStepService;
   let stepRepo: { findByWorkflowId: Mock; save: Mock; delete: Mock };
-  let workflowService: { verifyWorkflowInactive: Mock; getWorkflowOrThrow: Mock };
-  let dataSource: { transaction: Mock };
+  let workflowService: { verifyWorkflowInactive: Mock; getWorkflowOrThrow: Mock; findById: Mock };
 
   beforeEach(() => {
     stepRepo = {
@@ -22,15 +20,9 @@ describe('WorkflowStepService', () => {
       getWorkflowOrThrow: vi.fn(),
       findById: vi.fn(),
     };
-    dataSource = {
-      transaction: vi.fn().mockImplementation(async (cb) => {
-        return cb({ save: vi.fn() });
-      }),
-    };
 
     service = new WorkflowStepService(
       stepRepo as unknown as (typeof service)['stepRepo'],
-      dataSource as unknown as (typeof service)['dataSource'],
       workflowService as unknown as WorkflowService,
     );
   });
@@ -60,43 +52,6 @@ describe('WorkflowStepService', () => {
       expect(result[0].id).toBe('step-1');
       expect(result[0].parentWorkflowStepId).toBeNull();
       expect(stepRepo.findByWorkflowId).toHaveBeenCalledWith('workflow-1');
-    });
-  });
-
-  describe('reorderSteps', () => {
-    it('should update positions of steps when complete match provided', async () => {
-      workflowService.verifyWorkflowInactive.mockResolvedValue(undefined);
-      const step1 = { id: 'step-1', position: 0 } as WorkflowStep;
-      const step2 = { id: 'step-2', position: 1 } as WorkflowStep;
-      stepRepo.findByWorkflowId.mockResolvedValue([step1, step2]);
-      stepRepo.save.mockImplementation((s: WorkflowStep) => Promise.resolve(s));
-
-      await service.reorderSteps('tenant-1', 'workflow-1', { stepIds: ['step-2', 'step-1'] });
-
-      expect(step2.position).toBe(0);
-      expect(step1.position).toBe(1);
-    });
-
-    it('should reject partial lists for reorder', async () => {
-      workflowService.verifyWorkflowInactive.mockResolvedValue(undefined);
-      const step1 = { id: 'step-1', position: 0 } as WorkflowStep;
-      const step2 = { id: 'step-2', position: 1 } as WorkflowStep;
-      stepRepo.findByWorkflowId.mockResolvedValue([step1, step2]);
-
-      await expect(
-        service.reorderSteps('tenant-1', 'workflow-1', { stepIds: ['step-1'] }),
-      ).rejects.toThrow('Reorder list must contain all workflow steps exactly once');
-    });
-
-    it('should reject duplicate step IDs', async () => {
-      workflowService.verifyWorkflowInactive.mockResolvedValue(undefined);
-      const step1 = { id: 'step-1', position: 0 } as WorkflowStep;
-      const step2 = { id: 'step-2', position: 1 } as WorkflowStep;
-      stepRepo.findByWorkflowId.mockResolvedValue([step1, step2]);
-
-      await expect(
-        service.reorderSteps('tenant-1', 'workflow-1', { stepIds: ['step-1', 'step-1'] }),
-      ).rejects.toThrow('Reorder list must not contain duplicate step IDs');
     });
   });
 
@@ -140,6 +95,46 @@ describe('WorkflowStepService', () => {
       await expect(service.findStep('tenant-1', 'workflow-1', 'step-1')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('reorderStep', () => {
+    it('should throw NotFoundException if step to move is not found', async () => {
+      workflowService.verifyWorkflowInactive.mockResolvedValue(undefined);
+      stepRepo.findByWorkflowId.mockResolvedValue([]);
+
+      await expect(
+        service.reorderStep('tenant-1', 'workflow-1', 'missing-step', {
+          parentId: null,
+          branch: 'linear' as const,
+        }),
+      ).rejects.toThrow('Step not found');
+    });
+
+    it('should reorder step as root if parentId is null', async () => {
+      workflowService.verifyWorkflowInactive.mockResolvedValue(undefined);
+      const mockStep = {
+        id: 'step-1',
+        parentWorkflowStepId: 'step-0',
+        trueStepId: null,
+        falseStepId: null,
+        action: 'send_email',
+        tenantId: 'tenant-1',
+        workflowId: 'workflow-1',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      stepRepo.findByWorkflowId.mockResolvedValue([mockStep]);
+      stepRepo.save.mockResolvedValue({ ...mockStep, parentWorkflowStepId: null });
+
+      const result = await service.reorderStep('tenant-1', 'workflow-1', 'step-1', {
+        parentId: null,
+        branch: 'linear' as const,
+      });
+
+      expect(result.id).toBe('step-1');
+      expect(result.parentWorkflowStepId).toBeNull();
+      expect(stepRepo.save).toHaveBeenCalled();
     });
   });
 });

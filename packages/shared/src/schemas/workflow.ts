@@ -127,6 +127,13 @@ export const UpdateWorkflowStepSchema = z.object({
 
 export type UpdateWorkflowStepDto = z.infer<typeof UpdateWorkflowStepSchema>;
 
+export const ReorderWorkflowStepSchema = z.object({
+  parentId: z.string().uuid().nullable(),
+  branch: z.union([z.literal('linear'), z.boolean()]),
+});
+
+export type ReorderWorkflowStepDto = z.infer<typeof ReorderWorkflowStepSchema>;
+
 export const WorkflowStepResponseSchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().uuid(),
@@ -142,12 +149,6 @@ export const WorkflowStepResponseSchema = z.object({
 });
 
 export type WorkflowStepResponse = z.infer<typeof WorkflowStepResponseSchema>;
-
-export const ReorderStepsSchema = z.object({
-  stepIds: z.array(z.string().uuid()),
-});
-
-export type ReorderStepsDto = z.infer<typeof ReorderStepsSchema>;
 
 export const CreateWorkflowExitConditionSchema = z.object({
   type: z.string().min(1).max(50),

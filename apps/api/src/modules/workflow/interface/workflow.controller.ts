@@ -24,9 +24,9 @@ import {
   CreateWorkflowStepSchema,
   type UpdateWorkflowStepDto,
   UpdateWorkflowStepSchema,
+  type ReorderWorkflowStepDto,
+  ReorderWorkflowStepSchema,
   type WorkflowStepResponse,
-  type ReorderStepsDto,
-  ReorderStepsSchema,
   type CreateWorkflowExitConditionDto,
   CreateWorkflowExitConditionSchema,
   type UpdateWorkflowExitConditionDto,
@@ -143,16 +143,6 @@ export class WorkflowController {
     return this.triggerService.deleteTrigger(tenantId, id, triggerId);
   }
 
-  @Patch(':id/steps/reorder')
-  @RequirePermissions('workflows.manage')
-  async reorderSteps(
-    @CurrentTenant('id') tenantId: string,
-    @Param('id') id: string,
-    @Body(new ZodValidationPipe(ReorderStepsSchema)) dto: ReorderStepsDto,
-  ): Promise<void> {
-    return this.stepService.reorderSteps(tenantId, id, dto);
-  }
-
   @Get(':id/steps')
   @RequirePermissions('workflows.read')
   async getSteps(
@@ -180,6 +170,17 @@ export class WorkflowController {
     @Param('stepId') stepId: string,
   ): Promise<WorkflowStepResponse> {
     return this.stepService.findStep(tenantId, id, stepId);
+  }
+
+  @Post(':id/steps/:stepId/reorder')
+  @RequirePermissions('workflows.manage')
+  async reorderStep(
+    @CurrentTenant('id') tenantId: string,
+    @Param('id') id: string,
+    @Param('stepId') stepId: string,
+    @Body(new ZodValidationPipe(ReorderWorkflowStepSchema)) dto: ReorderWorkflowStepDto,
+  ): Promise<WorkflowStepResponse> {
+    return this.stepService.reorderStep(tenantId, id, stepId, dto);
   }
 
   @Patch(':id/steps/:stepId')

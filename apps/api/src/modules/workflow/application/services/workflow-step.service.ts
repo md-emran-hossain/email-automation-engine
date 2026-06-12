@@ -1,10 +1,9 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
 import {
   type CreateWorkflowStepDto,
   type UpdateWorkflowStepDto,
   type WorkflowStepResponse,
-  type ReorderStepsDto,
+  type ReorderWorkflowStepDto,
   STEP_ACTIONS,
 } from '@email-automation-engine/shared';
 import { WORKFLOW_STEP_REPOSITORY } from '../../constants/tokens';
@@ -17,7 +16,6 @@ export class WorkflowStepService {
   constructor(
     @Inject(WORKFLOW_STEP_REPOSITORY)
     private readonly stepRepo: WorkflowStepRepository,
-    private readonly dataSource: DataSource,
     private readonly workflowService: WorkflowService,
   ) {}
 
@@ -132,6 +130,105 @@ export class WorkflowStepService {
     return this.mapStepToResponse(saved);
   }
 
+  async reorderStep(
+    tenantId: string,
+    workflowId: string,
+    stepId: string,
+    dto: ReorderWorkflowStepDto,
+  ): Promise<WorkflowStepResponse> {
+    await this.workflowService.verifyWorkflowInactive(tenantId, workflowId);
+
+    const steps = await this.stepRepo.findByWorkflowId(workflowId);
+    const stepToMove = steps.find((s) => s.id === stepId);
+    if (!stepToMove) {
+      throw new NotFoundException('Step not found');
+    }
+
+    if (stepToMove.trueStepId && stepToMove.falseStepId) {
+      throw new BadRequestException(
+        'Cannot move a split step that has both true and false branches populated',
+      );
+    }
+
+    // 1. Healing the old position
+    const linearChild = steps.find((s) => s.parentWorkflowStepId === stepId);
+    const replacementId =
+      linearChild?.id || stepToMove.trueStepId || stepToMove.falseStepId || null;
+
+    if (linearChild) {
+      linearChild.parentWorkflowStepId = stepToMove.parentWorkflowStepId;
+      await this.stepRepo.save(linearChild);
+    } else if (replacementId) {
+      const promotedChild = steps.find((s) => s.id === replacementId);
+      if (promotedChild) {
+        promotedChild.parentWorkflowStepId = stepToMove.parentWorkflowStepId;
+        await this.stepRepo.save(promotedChild);
+      }
+    }
+
+    const conditionalParents = steps.filter(
+      (s) => s.trueStepId === stepId || s.falseStepId === stepId,
+    );
+    for (const parent of conditionalParents) {
+      if (parent.trueStepId === stepId) parent.trueStepId = replacementId;
+      if (parent.falseStepId === stepId) parent.falseStepId = replacementId;
+      await this.stepRepo.save(parent);
+    }
+
+    // 2. Splicing into new position
+    let existingChild: WorkflowStep | undefined;
+    if (dto.parentId === null) {
+      existingChild = steps.find(
+        (s) =>
+          s.id !== stepId &&
+          !s.parentWorkflowStepId &&
+          !steps.some((p) => p.trueStepId === s.id || p.falseStepId === s.id),
+      );
+      stepToMove.parentWorkflowStepId = null;
+    } else {
+      const parentStep = steps.find((s) => s.id === dto.parentId);
+      if (!parentStep) throw new NotFoundException('Target parent not found');
+
+      if (dto.branch === true) {
+        existingChild = steps.find((s) => s.id === parentStep.trueStepId && s.id !== stepId);
+        parentStep.trueStepId = stepToMove.id;
+        stepToMove.parentWorkflowStepId = null; // branch children don't have linear parent
+      } else if (dto.branch === false) {
+        existingChild = steps.find((s) => s.id === parentStep.falseStepId && s.id !== stepId);
+        parentStep.falseStepId = stepToMove.id;
+        stepToMove.parentWorkflowStepId = null; // branch children don't have linear parent
+      } else {
+        existingChild = steps.find(
+          (s) => s.parentWorkflowStepId === dto.parentId && s.id !== stepId,
+        );
+        stepToMove.parentWorkflowStepId = dto.parentId;
+      }
+      await this.stepRepo.save(parentStep);
+    }
+
+    if (existingChild) {
+      // Always attach existing child to true branch if split, else linear
+      if (stepToMove.action === STEP_ACTIONS.CONDITIONAL_SPLIT) {
+        stepToMove.trueStepId = existingChild.id;
+        existingChild.parentWorkflowStepId = null;
+      } else {
+        existingChild.parentWorkflowStepId = stepToMove.id;
+      }
+      await this.stepRepo.save(existingChild);
+    }
+
+    // Reset old children pointers to avoid duplicates if we moved it
+    if (stepToMove.action === STEP_ACTIONS.CONDITIONAL_SPLIT) {
+      if (stepToMove.trueStepId && stepToMove.trueStepId !== existingChild?.id)
+        stepToMove.trueStepId = null;
+      if (stepToMove.falseStepId && stepToMove.falseStepId !== existingChild?.id)
+        stepToMove.falseStepId = null;
+    }
+
+    const saved = await this.stepRepo.save(stepToMove);
+    return this.mapStepToResponse(saved);
+  }
+
   async deleteStep(tenantId: string, workflowId: string, stepId: string): Promise<void> {
     await this.workflowService.verifyWorkflowInactive(tenantId, workflowId);
 
@@ -181,46 +278,6 @@ export class WorkflowStepService {
 
     // 5. Delete the step
     await this.stepRepo.delete(stepId);
-  }
-
-  async reorderSteps(tenantId: string, workflowId: string, dto: ReorderStepsDto): Promise<void> {
-    await this.workflowService.verifyWorkflowInactive(tenantId, workflowId);
-
-    const steps = await this.stepRepo.findByWorkflowId(workflowId);
-    const stepIds = new Set(steps.map((s) => s.id));
-
-    if (dto.stepIds.length !== stepIds.size) {
-      throw new BadRequestException('Reorder list must contain all workflow steps exactly once');
-    }
-
-    const uniqueIds = new Set(dto.stepIds);
-    if (uniqueIds.size !== dto.stepIds.length) {
-      throw new BadRequestException('Reorder list must not contain duplicate step IDs');
-    }
-
-    for (const id of dto.stepIds) {
-      if (!stepIds.has(id)) {
-        throw new BadRequestException(`Step ${id} does not belong to this workflow`);
-      }
-    }
-
-    const execute = async (saveFn: (step: WorkflowStep) => Promise<WorkflowStep>) => {
-      for (let i = 0; i < dto.stepIds.length; i++) {
-        const step = steps.find((s) => s.id === dto.stepIds[i]);
-        if (step) {
-          step.position = i;
-          await saveFn(step);
-        }
-      }
-    };
-
-    if (this.dataSource) {
-      await this.dataSource.transaction(async (manager) => {
-        await execute((step) => manager.save(step));
-      });
-    } else {
-      await execute((step) => this.stepRepo.save(step));
-    }
   }
 
   async findStep(

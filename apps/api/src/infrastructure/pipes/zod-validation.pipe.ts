@@ -7,14 +7,14 @@ import {
 import { type ZodSchema } from 'zod';
 
 @Injectable()
-export class ZodValidationPipe<TInput, TOutput> implements PipeTransform<TInput, TOutput> {
-  constructor(private readonly schema: ZodSchema<TOutput, TInput>) {}
+export class ZodValidationPipe implements PipeTransform {
+  constructor(private readonly schema: ZodSchema<unknown>) {}
 
-  transform(value: TInput, metadata: ArgumentMetadata): TOutput {
+  transform(value: unknown, metadata: ArgumentMetadata): unknown {
     // Only validate the body. If we need to validate params/queries,
     // we should create specific pipes or check metadata properly.
     if (metadata.type !== 'body') {
-      return value as unknown as TOutput;
+      return value;
     }
 
     const result = this.schema.safeParse(value);

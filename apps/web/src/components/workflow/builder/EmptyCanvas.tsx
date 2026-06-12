@@ -4,6 +4,8 @@ interface EmptyCanvasProps {
   isAddingTrigger: boolean;
 }
 
+import { MousePointerClick } from 'lucide-react';
+
 export default function EmptyCanvas({ show, onAddTrigger, isAddingTrigger }: EmptyCanvasProps) {
   if (!show) return null;
 
@@ -11,14 +13,7 @@ export default function EmptyCanvas({ show, onAddTrigger, isAddingTrigger }: Emp
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
       <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur p-8 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-xl text-center pointer-events-auto max-w-sm">
         <div className="w-16 h-16 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
+          <MousePointerClick className="w-8 h-8" />
         </div>
         <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Start building</h3>
         <p className="text-gray-500 dark:text-zinc-400 mb-6 text-sm">

@@ -1,4 +1,5 @@
 import { SUPPORTED_STEP_ACTIONS } from '@email-automation-engine/shared';
+import { X } from 'lucide-react';
 
 interface AddNodeProps {
   config: { parentId: string | null; branch: 'linear' | true | false } | null;
@@ -23,14 +24,7 @@ export default function AddNode({ config, onClose, onSelectAction, isPending }: 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
         <div className="p-4 grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">

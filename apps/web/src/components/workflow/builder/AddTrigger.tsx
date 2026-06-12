@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import { Plus } from 'lucide-react';
 
 export function AddTrigger({
   data,
@@ -14,9 +15,7 @@ export function AddTrigger({
     >
       <div className="flex items-center justify-start gap-3 w-full">
         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-500 group-hover:text-indigo-500 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/30 transition-colors">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
+          <Plus className="w-5 h-5" />
         </div>
         <div className="flex flex-col text-left">
           <span className="text-sm font-medium text-gray-600 dark:text-zinc-300 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">

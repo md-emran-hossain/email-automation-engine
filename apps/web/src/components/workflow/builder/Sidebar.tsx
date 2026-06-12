@@ -4,6 +4,7 @@ import {
 } from '@email-automation-engine/shared';
 import EditTrigger, { TRIGGER_EVENT_LABELS } from './EditTrigger';
 import EditStep, { STEP_ACTION_LABELS } from './EditStep';
+import { X } from 'lucide-react';
 
 interface WorkflowSidebarProps {
   isOpen: boolean;
@@ -41,14 +42,7 @@ export default function Sidebar({
           onClick={onClose}
           className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
       </div>
       <div className="flex-1 overflow-y-auto p-4">

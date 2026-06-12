@@ -1,18 +1,14 @@
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   type WorkflowTriggerResponse,
   TRIGGER_EVENTS,
-  type TagResponse,
+  TriggerFormSchema,
+  type TriggerFormData,
   type UpdateWorkflowTriggerDto,
 } from '@email-automation-engine/shared';
-import { useTenant } from '../../../contexts/TenantContext';
-import api from '../../../lib/api';
-
-interface TriggerFormData {
-  event: string;
-  tagId?: string;
-}
+import { useWorkflowTriggers } from '../../../pages/workflow/hooks/useWorkflowTriggers';
+import { useTags } from '../../../pages/workflow/hooks/useTags';
 
 interface TriggerFormProps {
   trigger: WorkflowTriggerResponse;
@@ -43,20 +39,8 @@ export default function EditTrigger({
   onSuccess,
   canDelete,
 }: TriggerFormProps) {
-  const { currentTenant } = useTenant();
-  const queryClient = useQueryClient();
-
-  const { data: tags = [] } = useQuery<TagResponse[]>({
-    queryKey: ['tags', currentTenant?.id],
-    queryFn: async () => {
-      if (!currentTenant?.id) return [];
-      const res = await api.get<{ data: TagResponse[] }>(`/tenants/${currentTenant.id}/tags`);
-      return res.data.data;
-    },
-    enabled: !!currentTenant?.id,
-  });
-
   const { register, handleSubmit, watch } = useForm<TriggerFormData>({
+    resolver: zodResolver(TriggerFormSchema),
     defaultValues: {
       event: trigger.event,
       tagId: (trigger.filters?.tagId as string) || '',
@@ -65,49 +49,28 @@ export default function EditTrigger({
 
   const selectedEvent = watch('event');
 
-  const mutation = useMutation({
-    mutationFn: async (data: TriggerFormData) => {
-      const payload: UpdateWorkflowTriggerDto = {
-        event: data.event as UpdateWorkflowTriggerDto['event'],
-      };
-      if (
-        data.event === TRIGGER_EVENTS.TAG_ATTACHED ||
-        data.event === TRIGGER_EVENTS.TAG_DETACHED
-      ) {
-        payload.filters = { tagId: data.tagId };
-      }
-
-      const res = await api.patch<WorkflowTriggerResponse>(
-        `/tenants/${currentTenant?.id}/workflows/${workflowId}/triggers/${trigger.id}`,
-        payload,
-      );
-      return res.data;
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['workflow-triggers', currentTenant?.id, workflowId],
-      });
-      onSuccess();
-    },
+  const { data: tags = [] } = useTags({
+    enabled:
+      selectedEvent === TRIGGER_EVENTS.TAG_ATTACHED ||
+      selectedEvent === TRIGGER_EVENTS.TAG_DETACHED,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      await api.delete(
-        `/tenants/${currentTenant?.id}/workflows/${workflowId}/triggers/${trigger.id}`,
-      );
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: ['workflow-triggers', currentTenant?.id, workflowId],
-      });
-      onSuccess();
-    },
-  });
+  const { updateTrigger, deleteTrigger } = useWorkflowTriggers(workflowId);
+
+  const onSubmit = (data: TriggerFormData) => {
+    const payload: UpdateWorkflowTriggerDto = {
+      event: data.event as UpdateWorkflowTriggerDto['event'],
+    };
+    if (data.event === TRIGGER_EVENTS.TAG_ATTACHED || data.event === TRIGGER_EVENTS.TAG_DETACHED) {
+      payload.filters = { tagId: data.tagId };
+    }
+
+    updateTrigger.mutate({ triggerId: trigger.id, payload }, { onSuccess });
+  };
 
   return (
     <form
-      onSubmit={(e) => void handleSubmit((data) => mutation.mutate(data))(e)}
+      onSubmit={(e) => void handleSubmit(onSubmit)(e)}
       className="space-y-4 flex flex-col h-full"
     >
       <div className="flex-1 space-y-4">
@@ -137,19 +100,19 @@ export default function EditTrigger({
       <div className="pt-4 border-t border-gray-200 dark:border-zinc-800 flex gap-3">
         <button
           type="submit"
-          disabled={isActive || mutation.isPending}
+          disabled={isActive || updateTrigger.isPending}
           className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          {mutation.isPending ? 'Saving...' : 'Save'}
+          {updateTrigger.isPending ? 'Saving...' : 'Save'}
         </button>
         {canDelete && (
           <button
             type="button"
-            onClick={() => deleteMutation.mutate()}
-            disabled={isActive || deleteMutation.isPending}
+            onClick={() => deleteTrigger.mutate(trigger.id, { onSuccess })}
+            disabled={isActive || deleteTrigger.isPending}
             className="py-2 px-4 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
           >
-            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            {deleteTrigger.isPending ? 'Deleting...' : 'Delete'}
           </button>
         )}
       </div>

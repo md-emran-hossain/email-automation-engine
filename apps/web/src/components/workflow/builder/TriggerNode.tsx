@@ -3,6 +3,7 @@ import {
   type WorkflowTriggerResponse,
   SUPPORTED_TRIGGER_EVENTS,
 } from '@email-automation-engine/shared';
+import { Zap } from 'lucide-react';
 
 export function TriggerNode({
   data,
@@ -19,14 +20,7 @@ export function TriggerNode({
     <div className="w-[280px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm px-4 py-3 group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors relative">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center text-gray-600 dark:text-zinc-400">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
+          <Zap className="w-5 h-5" />
         </div>
         <div>
           <h4 className="text-sm font-medium text-gray-900 dark:text-white">Trigger</h4>

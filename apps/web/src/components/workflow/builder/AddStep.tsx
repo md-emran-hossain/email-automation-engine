@@ -1,4 +1,5 @@
 import { Handle, Position } from '@xyflow/react';
+import { Plus } from 'lucide-react';
 
 export function AddStep({
   data,
@@ -24,14 +25,9 @@ export function AddStep({
         `}
         title="Add step"
       >
-        <svg
+        <Plus
           className={`w-5 h-5 transition-colors ${data.isDragging ? 'text-indigo-500' : 'text-gray-400 dark:text-zinc-500 group-hover:text-indigo-500'}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
+        />
       </button>
 
       <Handle

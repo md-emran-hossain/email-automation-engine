@@ -42,7 +42,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (!isAuthenticated) return <Navigate to="/signin" />;
 
-  return <>{children}</>;
+  return children;
 }
 
 function TenantRoute({ children }: { children: React.ReactNode }) {
@@ -51,7 +51,7 @@ function TenantRoute({ children }: { children: React.ReactNode }) {
   if (isLoadingTenants) return <div className="p-8">Loading workspace...</div>;
   if (!currentTenant) return <Navigate to="/" />;
 
-  return <>{children}</>;
+  return children;
 }
 
 function MainLayout() {

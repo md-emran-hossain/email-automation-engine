@@ -106,24 +106,78 @@ export const WorkflowTriggerResponseSchema = z.object({
 
 export type WorkflowTriggerResponse = z.infer<typeof WorkflowTriggerResponseSchema>;
 
-export const CreateWorkflowStepSchema = z.object({
+export const DelayConfigSchema = z.discriminatedUnion('unit', [
+  z.object({
+    unit: z.literal('minutes'),
+    amount: z.coerce
+      .number()
+      .min(15, { message: 'Minimum delay is 15 minutes' })
+      .multipleOf(15, { message: 'Delay in minutes must be a multiple of 15' }),
+  }),
+  z.object({
+    unit: z.literal('hours'),
+    amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 hour' }),
+  }),
+  z.object({
+    unit: z.literal('days'),
+    amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 day' }),
+  }),
+  z.object({
+    unit: z.literal('weeks'),
+    amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 week' }),
+  }),
+]);
+
+const BaseStepSchema = z.object({
   parentWorkflowStepId: z.string().uuid().optional().nullable(),
-  action: z.enum(SUPPORTED_STEP_ACTIONS),
-  config: z.record(z.string(), z.unknown()).optional(),
   position: z.number().int().min(0).optional(),
   trueStepId: z.string().uuid().optional().nullable(),
   falseStepId: z.string().uuid().optional().nullable(),
 });
 
+const NonDelayActions = [
+  STEP_ACTIONS.SEND_EMAIL,
+  STEP_ACTIONS.ATTACH_TAG,
+  STEP_ACTIONS.DETACH_TAG,
+  STEP_ACTIONS.UNSUBSCRIBE_CONTACT,
+  STEP_ACTIONS.DELETE_CONTACT,
+  STEP_ACTIONS.CONDITIONAL_SPLIT,
+  STEP_ACTIONS.WEBHOOK,
+] as const;
+
+export const CreateWorkflowStepSchema = z.intersection(
+  BaseStepSchema,
+  z.union([
+    z.object({
+      action: z.literal(STEP_ACTIONS.DELAY),
+      config: DelayConfigSchema,
+    }),
+    z.object({
+      action: z.enum(NonDelayActions),
+      config: z.record(z.string(), z.unknown()).optional(),
+    }),
+  ]),
+);
+
 export type CreateWorkflowStepDto = z.infer<typeof CreateWorkflowStepSchema>;
 
-export const UpdateWorkflowStepSchema = z.object({
-  action: z.enum(SUPPORTED_STEP_ACTIONS).optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
-  parentWorkflowStepId: z.string().uuid().optional().nullable(),
-  trueStepId: z.string().uuid().optional().nullable(),
-  falseStepId: z.string().uuid().optional().nullable(),
-});
+export const UpdateWorkflowStepSchema = z.intersection(
+  BaseStepSchema,
+  z.union([
+    z.object({
+      action: z.literal(STEP_ACTIONS.DELAY),
+      config: DelayConfigSchema.optional(),
+    }),
+    z.object({
+      action: z.enum(NonDelayActions),
+      config: z.record(z.string(), z.unknown()).optional(),
+    }),
+    z.object({
+      action: z.undefined().optional(),
+      config: z.record(z.string(), z.unknown()).optional(),
+    }),
+  ]),
+);
 
 export type UpdateWorkflowStepDto = z.infer<typeof UpdateWorkflowStepSchema>;
 
@@ -213,3 +267,26 @@ export const UpdateEmailTemplateSchema = z.object({
 });
 
 export type UpdateEmailTemplateDto = z.infer<typeof UpdateEmailTemplateSchema>;
+
+export const TriggerFormSchema = z.object({
+  event: z.string().min(1, 'Event is required'),
+  tagId: z.string().optional(),
+});
+
+export type TriggerFormData = z.infer<typeof TriggerFormSchema>;
+
+export const StepFormSchema = z.object({
+  action: z.string().min(1, 'Action is required'),
+  configString: z.string().optional(),
+  config: z
+    .object({
+      amount: z.union([z.number(), z.string()]).optional(),
+      unit: z.string().optional(),
+      templateId: z.string().optional(),
+      tagId: z.string().optional(),
+    })
+    .catchall(z.unknown())
+    .optional(),
+});
+
+export type StepFormData = z.infer<typeof StepFormSchema>;

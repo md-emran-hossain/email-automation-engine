@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -5,21 +6,14 @@ import {
   STEP_ACTIONS,
   StepFormSchema,
   type StepFormData,
+  TIME_UNITS,
 } from '@email-automation-engine/shared';
 import { useWorkflowSteps } from '../../../pages/workflow/hooks/useWorkflowSteps';
-import { useEmailTemplates } from '../../../pages/workflow/hooks/useEmailTemplates';
-import { useTags } from '../../../pages/workflow/hooks/useTags';
-
-export const STEP_ACTION_LABELS: Record<string, string> = {
-  [STEP_ACTIONS.DELAY]: 'Delay',
-  [STEP_ACTIONS.SEND_EMAIL]: 'Send email',
-  [STEP_ACTIONS.ATTACH_TAG]: 'Attach tag',
-  [STEP_ACTIONS.DETACH_TAG]: 'Detach tag',
-  [STEP_ACTIONS.UNSUBSCRIBE_CONTACT]: 'Unsubscribe contact',
-  [STEP_ACTIONS.DELETE_CONTACT]: 'Delete contact',
-  [STEP_ACTIONS.CONDITIONAL_SPLIT]: 'Conditional split',
-  [STEP_ACTIONS.WEBHOOK]: 'Webhook',
-};
+import Delay from './steps/Delay';
+import Email from './steps/Email';
+import Tag from './steps/Tag';
+import Webhook from './steps/Webhook';
+import StepConditionsEditor, { type StepConditionsEditorRef } from './StepConditionsEditor';
 
 interface StepConfigPayload {
   amount?: number;
@@ -36,10 +30,13 @@ interface StepFormProps {
 }
 
 export default function EditStep({ step, workflowId, isActive, onSuccess }: StepFormProps) {
+  const conditionsRef = useRef<StepConditionsEditorRef>(null);
+
   const {
     register,
     handleSubmit,
     watch,
+    setError,
     formState: { isSubmitting, errors },
   } = useForm<StepFormData>({
     resolver: zodResolver(StepFormSchema),
@@ -48,7 +45,7 @@ export default function EditStep({ step, workflowId, isActive, onSuccess }: Step
       configString: JSON.stringify(step.config || {}, null, 2),
       config: {
         amount: (step.config as StepConfigPayload)?.amount || 15,
-        unit: (step.config as StepConfigPayload)?.unit || 'minutes',
+        unit: (step.config as StepConfigPayload)?.unit || TIME_UNITS.MINUTES,
         templateId: (step.config as StepConfigPayload)?.templateId || '',
         tagId: (step.config as StepConfigPayload)?.tagId || '',
       },
@@ -56,44 +53,69 @@ export default function EditStep({ step, workflowId, isActive, onSuccess }: Step
   });
 
   const selectedAction = watch('action');
-
   const { updateStep, deleteStep } = useWorkflowSteps(workflowId);
 
-  const { data: templates = [] } = useEmailTemplates({
-    enabled: selectedAction === STEP_ACTIONS.SEND_EMAIL,
-  });
-
-  const { data: tags = [] } = useTags({
-    enabled:
-      selectedAction === STEP_ACTIONS.ATTACH_TAG ||
-      selectedAction === STEP_ACTIONS.DETACH_TAG ||
-      selectedAction === STEP_ACTIONS.CONDITIONAL_SPLIT,
-  });
-
   const onSubmit = (data: StepFormData) => {
+    if (data.action === STEP_ACTIONS.CONDITIONAL_SPLIT) {
+      conditionsRef.current?.save();
+      return;
+    }
+
     let finalConfig: Record<string, unknown> = {};
 
-    // Build config based on selected action
-    if (data.action === STEP_ACTIONS.DELAY) {
-      finalConfig = {
-        amount: Number(data.config?.amount),
-        unit: data.config?.unit,
-      };
-    } else if (data.action === STEP_ACTIONS.SEND_EMAIL) {
-      finalConfig = { templateId: data.config?.templateId };
-    } else if (data.action === STEP_ACTIONS.ATTACH_TAG || data.action === STEP_ACTIONS.DETACH_TAG) {
-      finalConfig = { tagId: data.config?.tagId };
-    } else {
-      try {
-        finalConfig = JSON.parse(data.configString || '{}') as Record<string, unknown>;
-      } catch {
-        /* ignore parsing error */
-      }
+    switch (data.action) {
+      case STEP_ACTIONS.DELAY:
+        finalConfig = { amount: Number(data.config?.amount), unit: data.config?.unit };
+        break;
+      case STEP_ACTIONS.SEND_EMAIL:
+        finalConfig = { templateId: data.config?.templateId };
+        break;
+      case STEP_ACTIONS.ATTACH_TAG:
+      case STEP_ACTIONS.DETACH_TAG:
+        finalConfig = { tagId: data.config?.tagId };
+        break;
+      case STEP_ACTIONS.WEBHOOK:
+      default:
+        try {
+          finalConfig = JSON.parse(data.configString || '{}') as Record<string, unknown>;
+
+          if (data.action === STEP_ACTIONS.WEBHOOK) {
+            if (typeof finalConfig.url !== 'string' || !finalConfig.url.trim()) {
+              setError('configString', {
+                type: 'manual',
+                message: 'A valid "url" is required in the JSON configuration for a webhook.',
+              });
+              return;
+            }
+            try {
+              new URL(finalConfig.url);
+            } catch {
+              setError('configString', {
+                type: 'manual',
+                message: 'The "url" provided in the JSON configuration must be a valid URL.',
+              });
+              return;
+            }
+          }
+        } catch (e) {
+          setError('configString', {
+            type: 'manual',
+            message:
+              e instanceof Error
+                ? `Invalid JSON configuration: ${e.message}`
+                : 'Invalid JSON configuration',
+          });
+          return;
+        }
+        break;
     }
 
     updateStep.mutate(
       { stepId: step.id, payload: { action: data.action, config: finalConfig } },
-      { onSuccess },
+      {
+        onSuccess,
+        onError: (err) => setError('root', { message: err.message || 'Failed to update step' }),
+      },
     );
   };
 
@@ -104,105 +126,38 @@ export default function EditStep({ step, workflowId, isActive, onSuccess }: Step
       noValidate
     >
       <div className="flex-1 space-y-4">
+        {errors.root && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/50">
+            {errors.root.message}
+          </div>
+        )}
         <input type="hidden" {...register('action')} />
 
         {selectedAction === STEP_ACTIONS.DELAY && (
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-                Wait for
-              </label>
-              <input
-                type="number"
-                {...register('config.amount')}
-                min={watch('config.unit') === 'minutes' ? 15 : 1}
-                step={watch('config.unit') === 'minutes' ? 15 : 1}
-                disabled={isActive}
-                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white disabled:opacity-50 ${
-                  errors.config?.amount
-                    ? 'border-red-300 dark:border-red-900 focus:ring-red-500 focus:border-red-500'
-                    : 'border-gray-300 dark:border-zinc-700'
-                }`}
-              />
-              {errors.config?.amount && (
-                <p className="mt-1 text-xs text-red-500">
-                  {errors.config.amount.message as string}
-                </p>
-              )}
-            </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-                Time unit
-              </label>
-              <select
-                {...register('config.unit')}
-                disabled={isActive}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white disabled:opacity-50"
-              >
-                <option value="minutes">Minutes</option>
-                <option value="hours">Hours</option>
-                <option value="days">Days</option>
-                <option value="weeks">Weeks</option>
-              </select>
-            </div>
-          </div>
+          <Delay register={register} watch={watch} errors={errors} isActive={isActive} />
         )}
 
         {selectedAction === STEP_ACTIONS.SEND_EMAIL && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Email template
-            </label>
-            <select
-              {...register('config.templateId')}
-              disabled={isActive}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white disabled:opacity-50"
-            >
-              <option value="">Select a template...</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Email register={register} isActive={isActive} />
         )}
 
         {(selectedAction === STEP_ACTIONS.ATTACH_TAG ||
           selectedAction === STEP_ACTIONS.DETACH_TAG) && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Select tag
-            </label>
-            <select
-              {...register('config.tagId')}
-              disabled={isActive}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white disabled:opacity-50"
-            >
-              <option value="">Select a tag...</option>
-              {tags.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Tag register={register} isActive={isActive} />
         )}
 
-        {(selectedAction === STEP_ACTIONS.CONDITIONAL_SPLIT ||
-          selectedAction === STEP_ACTIONS.WEBHOOK) && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Configuration (JSON)
-            </label>
-            <textarea
-              {...register('configString')}
-              disabled={isActive}
-              rows={10}
-              className="w-full font-mono text-sm px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-800 text-gray-900 dark:text-white disabled:opacity-50"
-              placeholder="{}"
-            />
-          </div>
+        {selectedAction === STEP_ACTIONS.CONDITIONAL_SPLIT && (
+          <StepConditionsEditor
+            ref={conditionsRef}
+            workflowId={workflowId}
+            stepId={step.id}
+            isActive={isActive}
+            onSuccess={onSuccess}
+          />
+        )}
+
+        {selectedAction === STEP_ACTIONS.WEBHOOK && (
+          <Webhook register={register} errors={errors} isActive={isActive} />
         )}
       </div>
 
@@ -216,7 +171,13 @@ export default function EditStep({ step, workflowId, isActive, onSuccess }: Step
         </button>
         <button
           type="button"
-          onClick={() => deleteStep.mutate(step.id, { onSuccess })}
+          onClick={() =>
+            deleteStep.mutate(step.id, {
+              onSuccess,
+              onError: (err) =>
+                setError('root', { message: err.message || 'Failed to delete step' }),
+            })
+          }
           disabled={isActive || deleteStep.isPending}
           className="py-2 px-4 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
         >

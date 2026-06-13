@@ -18,20 +18,6 @@ interface TriggerFormProps {
   canDelete: boolean;
 }
 
-export const TRIGGER_EVENT_LABELS: Record<string, string> = {
-  [TRIGGER_EVENTS.CONTACT_SUBSCRIBED]: 'Contact subscribed',
-  [TRIGGER_EVENTS.CONTACT_UNSUBSCRIBED]: 'Contact unsubscribed',
-  [TRIGGER_EVENTS.TAG_ATTACHED]: 'Tag attached',
-  [TRIGGER_EVENTS.TAG_DETACHED]: 'Tag detached',
-  [TRIGGER_EVENTS.EMAIL_SENT]: 'Email sent',
-  [TRIGGER_EVENTS.EMAIL_DELIVERED]: 'Email delivered',
-  [TRIGGER_EVENTS.EMAIL_BOUNCED]: 'Email bounced',
-  [TRIGGER_EVENTS.EMAIL_COMPLAINED]: 'Email complained',
-  [TRIGGER_EVENTS.EMAIL_OPENED]: 'Email opened',
-  [TRIGGER_EVENTS.EMAIL_LINK_CLICKED]: 'Email link clicked',
-  [TRIGGER_EVENTS.CUSTOM_EVENT]: 'Custom event',
-};
-
 export default function EditTrigger({
   trigger,
   workflowId,
@@ -39,7 +25,13 @@ export default function EditTrigger({
   onSuccess,
   canDelete,
 }: TriggerFormProps) {
-  const { register, handleSubmit, watch } = useForm<TriggerFormData>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setError,
+    formState: { errors },
+  } = useForm<TriggerFormData>({
     resolver: zodResolver(TriggerFormSchema),
     defaultValues: {
       event: trigger.event,
@@ -65,7 +57,13 @@ export default function EditTrigger({
       payload.filters = { tagId: data.tagId };
     }
 
-    updateTrigger.mutate({ triggerId: trigger.id, payload }, { onSuccess });
+    updateTrigger.mutate(
+      { triggerId: trigger.id, payload },
+      {
+        onSuccess,
+        onError: (err) => setError('root', { message: err.message || 'Failed to update trigger' }),
+      },
+    );
   };
 
   return (
@@ -74,6 +72,11 @@ export default function EditTrigger({
       className="space-y-4 flex flex-col h-full"
     >
       <div className="flex-1 space-y-4">
+        {errors.root && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium border border-red-200 dark:border-red-900/50">
+            {errors.root.message}
+          </div>
+        )}
         <input type="hidden" {...register('event')} />
 
         {(selectedEvent === TRIGGER_EVENTS.TAG_ATTACHED ||
@@ -108,7 +111,13 @@ export default function EditTrigger({
         {canDelete && (
           <button
             type="button"
-            onClick={() => deleteTrigger.mutate(trigger.id, { onSuccess })}
+            onClick={() =>
+              deleteTrigger.mutate(trigger.id, {
+                onSuccess,
+                onError: (err) =>
+                  setError('root', { message: err.message || 'Failed to delete trigger' }),
+              })
+            }
             disabled={isActive || deleteTrigger.isPending}
             className="py-2 px-4 bg-white dark:bg-zinc-800 border border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 rounded-lg text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
           >

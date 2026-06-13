@@ -1,9 +1,7 @@
 import { Handle, Position } from '@xyflow/react';
-import {
-  type WorkflowTriggerResponse,
-  SUPPORTED_TRIGGER_EVENTS,
-} from '@email-automation-engine/shared';
+import { type WorkflowTriggerResponse, TRIGGER_EVENTS } from '@email-automation-engine/shared';
 import { Zap } from 'lucide-react';
+import { useTags } from '../../../pages/workflow/hooks/useTags';
 
 export function TriggerNode({
   data,
@@ -13,8 +11,24 @@ export function TriggerNode({
   };
 }) {
   const { trigger } = data;
+  const { data: tags = [] } = useTags();
 
-  const label = SUPPORTED_TRIGGER_EVENTS.find((e) => e === trigger.event) || trigger.event;
+  const eventName = trigger.event;
+
+  let subtitle = 'All contacts';
+  switch (trigger.event) {
+    case TRIGGER_EVENTS.TAG_ATTACHED:
+    case TRIGGER_EVENTS.TAG_DETACHED: {
+      const tagId = trigger.filters?.tagId;
+      if (tagId) {
+        const tag = tags.find((t) => t.id === tagId);
+        if (tag) subtitle = tag.name;
+      } else {
+        subtitle = 'Configure trigger';
+      }
+      break;
+    }
+  }
 
   return (
     <div className="w-[280px] bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl shadow-sm px-4 py-3 group hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors relative">
@@ -23,12 +37,9 @@ export function TriggerNode({
           <Zap className="w-5 h-5" />
         </div>
         <div>
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Trigger</h4>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 truncate">
-            {label
-              .replaceAll('_', ' ')
-              .replaceAll('.', ' ')
-              .replace(/^./, (c) => c.toUpperCase())}
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">{eventName}</h4>
+          <p className="text-xs text-gray-500 dark:text-zinc-400 truncate max-w-[200px]">
+            {subtitle}
           </p>
         </div>
       </div>

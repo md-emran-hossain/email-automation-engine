@@ -2,8 +2,9 @@ import {
   type WorkflowStepResponse,
   type WorkflowTriggerResponse,
 } from '@email-automation-engine/shared';
-import EditTrigger, { TRIGGER_EVENT_LABELS } from './EditTrigger';
-import EditStep, { STEP_ACTION_LABELS } from './EditStep';
+import EditTrigger from './EditTrigger';
+import EditStep from './EditStep';
+import { STEP_ACTION_LABELS, TRIGGER_EVENT_LABELS } from '../constants';
 import { X } from 'lucide-react';
 
 interface WorkflowSidebarProps {

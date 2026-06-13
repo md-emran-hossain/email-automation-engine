@@ -11,6 +11,66 @@ export const STEP_ACTIONS = {
   WEBHOOK: 'webhook',
 } as const;
 
+export const WEBHOOK_DELIVERY_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+} as const;
+
+export const SUPPORTED_WEBHOOK_DELIVERY_STATUSES = [
+  WEBHOOK_DELIVERY_STATUS.PENDING,
+  WEBHOOK_DELIVERY_STATUS.COMPLETED,
+  WEBHOOK_DELIVERY_STATUS.FAILED,
+] as const;
+
+export const LOGICAL_OPERATORS = {
+  ALL: 'ALL',
+  ANY: 'ANY',
+  NONE: 'NONE',
+} as const;
+
+export const SUPPORTED_LOGICAL_OPERATORS = [
+  LOGICAL_OPERATORS.ALL,
+  LOGICAL_OPERATORS.ANY,
+  LOGICAL_OPERATORS.NONE,
+] as const;
+
+export type LogicalOperator = (typeof SUPPORTED_LOGICAL_OPERATORS)[number];
+
+export const CONDITION_TYPES = {
+  TAG_HAS: 'tag_has',
+  TAG_MISSING: 'tag_missing',
+  CONTACT_FIELD: 'contact_field',
+  CONTACT_UNSUBSCRIBED: 'contact_unsubscribed',
+  TAG_ADDED: 'tag_added',
+  TAG_REMOVED: 'tag_removed',
+  EMAIL_OPENED: 'email_opened',
+  EMAIL_CLICKED: 'email_clicked',
+} as const;
+
+export const SUPPORTED_CONDITION_TYPES = [
+  CONDITION_TYPES.TAG_HAS,
+  CONDITION_TYPES.TAG_MISSING,
+  CONDITION_TYPES.CONTACT_FIELD,
+  CONDITION_TYPES.CONTACT_UNSUBSCRIBED,
+  CONDITION_TYPES.TAG_ADDED,
+  CONDITION_TYPES.TAG_REMOVED,
+  CONDITION_TYPES.EMAIL_OPENED,
+  CONDITION_TYPES.EMAIL_CLICKED,
+] as const;
+
+export const CONDITION_OPERATORS = {
+  EQUALS: 'equals',
+  NOT_EQUALS: 'not_equals',
+  CONTAINS: 'contains',
+} as const;
+
+export const SUPPORTED_CONDITION_OPERATORS = [
+  CONDITION_OPERATORS.EQUALS,
+  CONDITION_OPERATORS.NOT_EQUALS,
+  CONDITION_OPERATORS.CONTAINS,
+] as const;
+
 export const SUPPORTED_STEP_ACTIONS = [
   STEP_ACTIONS.DELAY,
   STEP_ACTIONS.SEND_EMAIL,
@@ -106,24 +166,38 @@ export const WorkflowTriggerResponseSchema = z.object({
 
 export type WorkflowTriggerResponse = z.infer<typeof WorkflowTriggerResponseSchema>;
 
+export const TIME_UNITS = {
+  MINUTES: 'minutes',
+  HOURS: 'hours',
+  DAYS: 'days',
+  WEEKS: 'weeks',
+} as const;
+
+export const SUPPORTED_TIME_UNITS = [
+  TIME_UNITS.MINUTES,
+  TIME_UNITS.HOURS,
+  TIME_UNITS.DAYS,
+  TIME_UNITS.WEEKS,
+] as const;
+
 export const DelayConfigSchema = z.discriminatedUnion('unit', [
   z.object({
-    unit: z.literal('minutes'),
+    unit: z.literal(TIME_UNITS.MINUTES),
     amount: z.coerce
       .number()
       .min(15, { message: 'Minimum delay is 15 minutes' })
       .multipleOf(15, { message: 'Delay in minutes must be a multiple of 15' }),
   }),
   z.object({
-    unit: z.literal('hours'),
+    unit: z.literal(TIME_UNITS.HOURS),
     amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 hour' }),
   }),
   z.object({
-    unit: z.literal('days'),
+    unit: z.literal(TIME_UNITS.DAYS),
     amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 day' }),
   }),
   z.object({
-    unit: z.literal('weeks'),
+    unit: z.literal(TIME_UNITS.WEEKS),
     amount: z.coerce.number().min(1, { message: 'Minimum delay is 1 week' }),
   }),
 ]);
@@ -205,6 +279,7 @@ export const WorkflowStepResponseSchema = z.object({
 export type WorkflowStepResponse = z.infer<typeof WorkflowStepResponseSchema>;
 
 export const CreateWorkflowExitConditionSchema = z.object({
+  logicalOperator: z.enum(SUPPORTED_LOGICAL_OPERATORS),
   type: z.string().min(1).max(50),
   resource: z.string().min(1).max(255),
   operator: z.string().min(1).max(50),
@@ -214,6 +289,7 @@ export const CreateWorkflowExitConditionSchema = z.object({
 export type CreateWorkflowExitConditionDto = z.infer<typeof CreateWorkflowExitConditionSchema>;
 
 export const UpdateWorkflowExitConditionSchema = z.object({
+  logicalOperator: z.enum(SUPPORTED_LOGICAL_OPERATORS).optional(),
   type: z.string().min(1).max(50).optional(),
   resource: z.string().min(1).max(255).optional(),
   operator: z.string().min(1).max(50).optional(),
@@ -226,6 +302,7 @@ export const WorkflowExitConditionResponseSchema = z.object({
   id: z.string().uuid(),
   tenantId: z.string().uuid(),
   workflowId: z.string().uuid(),
+  logicalOperator: z.string(),
   type: z.string(),
   resource: z.string(),
   operator: z.string(),
@@ -235,6 +312,31 @@ export const WorkflowExitConditionResponseSchema = z.object({
 });
 
 export type WorkflowExitConditionResponse = z.infer<typeof WorkflowExitConditionResponseSchema>;
+
+export const CreateWorkflowStepConditionSchema = z.object({
+  logicalOperator: z.enum(SUPPORTED_LOGICAL_OPERATORS),
+  type: z.string().min(1).max(50),
+  resource: z.string().min(1).max(255),
+  operator: z.string().min(1).max(50),
+  value: z.string().optional().nullable(),
+});
+
+export type CreateWorkflowStepConditionDto = z.infer<typeof CreateWorkflowStepConditionSchema>;
+
+export const WorkflowStepConditionResponseSchema = z.object({
+  id: z.string().uuid(),
+  tenantId: z.string().uuid(),
+  workflowStepId: z.string().uuid(),
+  logicalOperator: z.string(),
+  type: z.string(),
+  resource: z.string(),
+  operator: z.string(),
+  value: z.string().optional().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type WorkflowStepConditionResponse = z.infer<typeof WorkflowStepConditionResponseSchema>;
 
 export const EmailTemplateSchema = z.object({
   id: z.string().uuid(),

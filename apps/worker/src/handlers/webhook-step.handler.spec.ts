@@ -5,6 +5,7 @@ import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
+import { STEP_ACTIONS } from '@email-automation-engine/shared';
 
 vi.mock('../infrastructure', () => ({
   workerConfig: {
@@ -30,10 +31,10 @@ describe('webhook-step.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
 
@@ -47,7 +48,7 @@ describe('webhook-step.handler', () => {
     workflowId: '55555555-5555-4555-a555-555555555555',
     workflowStepId: '66666666-6666-4666-a666-666666666666',
     contactWorkflowStepId: '77777777-7777-4777-a777-777777777777',
-    action: 'webhook',
+    action: STEP_ACTIONS.WEBHOOK,
   };
 
   it('enqueues delivery message and finish message immediately', async () => {

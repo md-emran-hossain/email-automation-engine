@@ -111,9 +111,9 @@ export function useDragAndDropReorder(
               parentId,
               branch,
             });
-          } catch (err) {
-            const error = err as AxiosError<{ message: string }>;
-            alert(error.response?.data?.message || error.message || 'Failed to move step');
+          } catch (error) {
+            const err = error as AxiosError<{ message: string }>;
+            alert(err.response?.data?.message || err.message || 'Failed to move step');
           } finally {
             void queryClient.invalidateQueries({ queryKey: ['workflow-steps'] });
           }

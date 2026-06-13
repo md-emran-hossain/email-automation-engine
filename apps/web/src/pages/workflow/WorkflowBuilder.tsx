@@ -26,6 +26,7 @@ import AddNode from '../../components/modals/AddNode';
 import AddTrigger from '../../components/modals/AddTrigger';
 import EmptyCanvas from '../../components/workflow/builder/EmptyCanvas';
 import Alert from '../../components/modals/Alert';
+import ExitConditionsModal from '../../components/workflow/builder/ExitConditionsModal';
 
 const NODE_TYPES = {
   triggerNode: TriggerNode,
@@ -53,6 +54,7 @@ export default function WorkflowBuilder() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [addNodeConfig, setAddNodeConfig] = useState<AddNodeConfig>(null);
   const [isAddTriggerModalOpen, setIsAddTriggerModalOpen] = useState(false);
+  const [isExitConditionsModalOpen, setIsExitConditionsModalOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const { workflow, isLoading: isLoadingWorkflow, toggleActive } = useWorkflow(workflowId);
@@ -125,6 +127,7 @@ export default function WorkflowBuilder() {
         workflow={workflow}
         onToggleActive={handleToggleActive}
         isTogglingActive={toggleActive.isPending}
+        onOpenExitConditions={() => setIsExitConditionsModalOpen(true)}
       />
 
       <div className="flex-1 w-full h-full bg-gray-50/50 dark:bg-zinc-950/50 relative">
@@ -198,6 +201,13 @@ export default function WorkflowBuilder() {
           onClose={() => setAlertMessage(null)}
           title="Activation Failed"
           description={alertMessage || ''}
+        />
+
+        <ExitConditionsModal
+          isOpen={isExitConditionsModalOpen}
+          onClose={() => setIsExitConditionsModalOpen(false)}
+          workflowId={workflowId!}
+          isActive={workflow.isActive}
         />
       </div>
     </div>

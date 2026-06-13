@@ -29,40 +29,53 @@ export async function handler(event: SqsBatchEvent, deps: WorkerDeps): Promise<S
     const message = record.message;
 
     try {
-      for (const workflowId of message.matchedWorkflowIds) {
-        await dataSource.transaction(async (manager) => {
-          // Find workflow, ensure active
-          const workflows = await manager.query<Array<{ id: string; is_active: boolean }>>(
-            `SELECT id, is_active FROM workflows WHERE id = $1 AND tenant_id = $2`,
-            [workflowId, message.tenantId],
+      await dataSource.transaction(async (manager) => {
+        // 1. Lock the contact row once per message to prevent deduplication race conditions
+        const contacts = await manager.query<Array<{ id: string }>>(
+          `SELECT id FROM contacts WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL FOR UPDATE`,
+          [message.contactId, message.tenantId],
+        );
+        if (contacts.length === 0) {
+          return; // Skip if contact is missing or deleted
+        }
+
+        // 2. Fetch all matching workflows in one go to check if they are active
+        const workflows = await manager.query<Array<{ id: string; is_active: boolean }>>(
+          `SELECT id, is_active FROM workflows WHERE id = ANY($1) AND tenant_id = $2`,
+          [message.matchedWorkflowIds, message.tenantId],
+        );
+        const activeWorkflowIds = workflows.filter((w) => w.is_active).map((w) => w.id);
+        if (activeWorkflowIds.length === 0) {
+          return; // Skip if no active workflows
+        }
+
+        // 3. Fetch root steps for all active workflows in one go
+        const steps = await manager.query<
+          Array<{ id: string; action: string; workflow_id: string }>
+        >(
+          `SELECT id, action, workflow_id FROM workflow_steps WHERE workflow_id = ANY($1) AND parent_workflow_step_id IS NULL`,
+          [activeWorkflowIds],
+        );
+
+        // 4. Fetch triggers for all active workflows in one go
+        let triggers: Array<{ id: string; workflow_id: string }> = [];
+        if (message.matchedTriggerIds.length > 0) {
+          const triggerIdsList = message.matchedTriggerIds.map((_, i) => `$${i + 3}`).join(', ');
+          triggers = await manager.query<Array<{ id: string; workflow_id: string }>>(
+            `SELECT id, workflow_id FROM workflow_triggers WHERE id IN (${triggerIdsList}) AND workflow_id = ANY($1) AND tenant_id = $2`,
+            [activeWorkflowIds, message.tenantId, ...message.matchedTriggerIds],
           );
-          if (workflows.length === 0 || !workflows[0]?.is_active) {
-            return; // Skip inactive
+        }
+
+        // 5. Process each active workflow in memory using the batched data
+        for (const workflowId of activeWorkflowIds) {
+          const rootStep = steps.find((s) => s.workflow_id === workflowId);
+          if (!rootStep) {
+            continue; // Malformed workflow (no root step)
           }
 
-          // Find contact, ensure not deleted
-          // Use FOR UPDATE to lock the contact row and prevent dedup race conditions across concurrent invocations
-          const contacts = await manager.query<Array<{ id: string }>>(
-            `SELECT id FROM contacts WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL FOR UPDATE`,
-            [message.contactId, message.tenantId],
-          );
-          if (contacts.length === 0) {
-            return; // Skip deleted/missing contact
-          }
-
-          // Get first step (root step has no parent)
-          const steps = await manager.query<Array<{ id: string; action: string }>>(
-            `SELECT id, action FROM workflow_steps WHERE workflow_id = $1 AND parent_workflow_step_id IS NULL LIMIT 1`,
-            [workflowId],
-          );
-          if (steps.length === 0 || !steps[0]) {
-            return; // Malformed workflow
-          }
-          const firstStep = steps[0];
-
-          // Match the specific trigger id if possible
-          const triggerId =
-            message.matchedTriggerIds.length > 0 ? message.matchedTriggerIds[0] : null;
+          const trigger = triggers.find((t) => t.workflow_id === workflowId);
+          const triggerId = trigger ? trigger.id : null;
 
           // Insert contact_workflows with dedup check using CTE
           const newContactWorkflowId = uuidv7();
@@ -85,7 +98,7 @@ export async function handler(event: SqsBatchEvent, deps: WorkerDeps): Promise<S
           );
 
           if (insertRes.length === 0 || !insertRes[0]) {
-            return; // Dedup
+            continue; // Dedup check triggered
           }
           const contactWorkflowId = insertRes[0].id;
 
@@ -99,13 +112,13 @@ export async function handler(event: SqsBatchEvent, deps: WorkerDeps): Promise<S
             contactId: message.contactId,
             contactWorkflowId,
             workflowId,
-            workflowStepId: firstStep.id,
-            action: firstStep.action,
+            workflowStepId: rootStep.id,
+            action: rootStep.action,
           });
-        });
-      }
-    } catch (err) {
-      Logger.error(`Failed to process start-workflow for record ${record.messageId}`, err);
+        }
+      });
+    } catch (error) {
+      Logger.error(`Failed to process start-workflow for record ${record.messageId}`, error);
       batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }

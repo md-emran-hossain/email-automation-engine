@@ -5,10 +5,19 @@ import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
+import { STEP_ACTIONS } from '@email-automation-engine/shared';
 
 describe('start-workflows.handler', () => {
   let queueService: Mocked<QueueService>;
   let dataSource: Mocked<DataSource>;
+
+  const defaultTenantId = '11111111-1111-4111-a111-111111111111';
+  const defaultContactId = '22222222-2222-4222-a222-222222222222';
+  const defaultWorkflowId = '33333333-3333-4333-a333-333333333333';
+  const defaultStepId = '44444444-4444-4444-a444-444444444444';
+  const defaultTriggerId = '55555555-5555-4555-a555-555555555555';
+  const defaultContactWorkflowId = '66666666-6666-4666-a666-666666666666';
+  const defaultMessageId = '77777777-7777-4777-a777-777777777777';
 
   beforeEach(() => {
     queueService = {
@@ -24,36 +33,63 @@ describe('start-workflows.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
 
-  it('should process a valid message and enqueue a step', async () => {
+  const createMsg = (overrides?: Partial<Record<string, unknown>>) => ({
+    version: 1,
+    messageId: defaultMessageId,
+    tenantId: defaultTenantId,
+    createdAt: '2024-01-01T00:00:00Z',
+    contactId: defaultContactId,
+    event: 'contact.subscribed',
+    occurredAt: '2024-01-01T00:00:00Z',
+    matchedTriggerIds: [defaultTriggerId],
+    matchedWorkflowIds: [defaultWorkflowId],
+    ...overrides,
+  });
+
+  interface QueryMockOptions {
+    isActive?: boolean;
+    contactExists?: boolean;
+    insertReturnsId?: boolean;
+    errorAfterCall?: number;
+  }
+
+  const setupMockQuery = (options: QueryMockOptions = {}) => {
+    const {
+      isActive = true,
+      contactExists = true,
+      insertReturnsId = true,
+      errorAfterCall = Infinity,
+    } = options;
+
+    let callCount = 0;
     dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM workflows')) return [{ id: 'wf1', is_active: true }];
-      if (query.includes('FROM contacts')) return [{ id: 'c1' }];
-      if (query.includes('FROM workflow_steps')) return [{ id: 'step1', action: 'delay' }];
-      if (query.includes('SELECT id FROM contact_workflows')) return []; // No existing
-      if (query.includes('INSERT INTO contact_workflows')) return [{ id: 'cw1' }];
+      callCount++;
+      if (callCount > errorAfterCall) throw new Error('DB Error');
+
+      if (query.includes('FROM workflows')) return [{ id: defaultWorkflowId, is_active: isActive }];
+      if (query.includes('FROM contacts')) return contactExists ? [{ id: defaultContactId }] : [];
+      if (query.includes('FROM workflow_steps'))
+        return [{ id: defaultStepId, action: STEP_ACTIONS.DELAY, workflow_id: defaultWorkflowId }];
+      if (query.includes('FROM workflow_triggers'))
+        return [{ id: defaultTriggerId, workflow_id: defaultWorkflowId }];
+      if (query.includes('SELECT id FROM contact_workflows')) return [];
+      if (query.includes('INSERT INTO contact_workflows'))
+        return insertReturnsId ? [{ id: defaultContactWorkflowId }] : [];
       return [];
     });
+  };
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      event: 'contact.subscribed',
-      occurredAt: '2024-01-01T00:00:00Z',
-      matchedTriggerIds: ['55555555-5555-4555-a555-555555555555'],
-      matchedWorkflowIds: ['33333333-3333-4333-a333-333333333333'],
-    };
+  it('should process a valid message and enqueue a step', async () => {
+    setupMockQuery();
 
-    const result = await handler(createEvent([msg]), {
+    const result = await handler(createEvent([createMsg()]), {
       queueService,
       cacheService: {} as CacheService,
       dataSource,
@@ -65,29 +101,14 @@ describe('start-workflows.handler', () => {
       contactWorkflowId: string;
       workflowStepId: string;
     };
-    expect(queuedMsg.contactWorkflowId).toBe('cw1');
-    expect(queuedMsg.workflowStepId).toBe('step1');
+    expect(queuedMsg.contactWorkflowId).toBe(defaultContactWorkflowId);
+    expect(queuedMsg.workflowStepId).toBe(defaultStepId);
   });
 
   it('should skip inactive workflows', async () => {
-    dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM workflows')) return [{ id: 'wf1', is_active: false }];
-      return [];
-    });
+    setupMockQuery({ isActive: false });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      event: 'contact.subscribed',
-      occurredAt: '2024-01-01T00:00:00Z',
-      matchedTriggerIds: ['55555555-5555-4555-a555-555555555555'],
-      matchedWorkflowIds: ['33333333-3333-4333-a333-333333333333'],
-    };
-
-    const result = await handler(createEvent([msg]), {
+    const result = await handler(createEvent([createMsg()]), {
       queueService,
       cacheService: {} as CacheService,
       dataSource,
@@ -98,25 +119,9 @@ describe('start-workflows.handler', () => {
   });
 
   it('should skip deleted contacts', async () => {
-    dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM workflows')) return [{ id: 'wf1', is_active: true }];
-      if (query.includes('FROM contacts')) return []; // Contact deleted or not found
-      return [];
-    });
+    setupMockQuery({ contactExists: false });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      event: 'contact.subscribed',
-      occurredAt: '2024-01-01T00:00:00Z',
-      matchedTriggerIds: ['55555555-5555-4555-a555-555555555555'],
-      matchedWorkflowIds: ['33333333-3333-4333-a333-333333333333'],
-    };
-
-    const result = await handler(createEvent([msg]), {
+    const result = await handler(createEvent([createMsg()]), {
       queueService,
       cacheService: {} as CacheService,
       dataSource,
@@ -127,76 +132,34 @@ describe('start-workflows.handler', () => {
   });
 
   it('should be idempotent and not enqueue step if contact_workflow already exists', async () => {
-    dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM workflows')) return [{ id: 'wf1', is_active: true }];
-      if (query.includes('FROM contacts')) return [{ id: 'c1' }];
-      if (query.includes('FROM workflow_steps')) return [{ id: 'step1', action: 'delay' }];
-      if (query.includes('INSERT INTO contact_workflows')) return []; // CTE dedup returned empty array
-      return [];
-    });
+    setupMockQuery({ insertReturnsId: false });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      event: 'contact.subscribed',
-      occurredAt: '2024-01-01T00:00:00Z',
-      matchedTriggerIds: ['55555555-5555-4555-a555-555555555555'],
-      matchedWorkflowIds: ['33333333-3333-4333-a333-333333333333'],
-    };
-
-    const result = await handler(createEvent([msg]), {
+    const result = await handler(createEvent([createMsg()]), {
       queueService,
       cacheService: {} as CacheService,
       dataSource,
     });
 
     expect(result.batchItemFailures).toHaveLength(0);
-    expect(queueService.sendMessage).not.toHaveBeenCalled(); // Deduped, so no message sent
+    expect(queueService.sendMessage).not.toHaveBeenCalled();
   });
 
   it('should handle partial batch failure', async () => {
-    // We'll throw an error for the second query only
-    let callCount = 0;
-    dataSource.query.mockImplementation(async (query: string) => {
-      callCount++;
-      if (callCount > 5) throw new Error('DB Error'); // Fails on the second message
+    // 5 queries successfully complete for the first message, 6th query throws for the second message
+    setupMockQuery({ errorAfterCall: 5 });
 
-      if (query.includes('FROM workflows')) return [{ id: 'wf1', is_active: true }];
-      if (query.includes('FROM contacts')) return [{ id: 'c1' }];
-      if (query.includes('FROM workflow_steps')) return [{ id: 'step1', action: 'delay' }];
-      if (query.includes('INSERT INTO contact_workflows')) return [{ id: 'cw1' }];
-      return [];
-    });
+    const validMsg = createMsg({ messageId: '11111111-1111-4111-a111-111111111111' });
+    const failedMsg = createMsg({ messageId: '22222222-2222-4222-a222-222222222222' });
 
-    const validMsg = {
-      version: 1,
-      messageId: '11111111-1111-4111-a111-111111111111',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      event: 'contact.subscribed',
-      occurredAt: '2024-01-01T00:00:00Z',
-      matchedTriggerIds: ['55555555-5555-4555-a555-555555555555'],
-      matchedWorkflowIds: ['33333333-3333-4333-a333-333333333333'],
-    };
-
-    const failedMsg = {
-      ...validMsg,
-      messageId: '22222222-2222-4222-a222-222222222222',
-    };
-
-    const event = createEvent([validMsg, failedMsg]);
-
-    const result = await handler(event, {
+    const result = await handler(createEvent([validMsg, failedMsg]), {
       queueService,
       cacheService: {} as CacheService,
       dataSource,
     });
 
     expect(result.batchItemFailures).toHaveLength(1);
-    expect(result.batchItemFailures[0].itemIdentifier).toBe('msg-1'); // Actually createEvent uses receiptHandle but our manual event uses "msg-1" for messageId and handles index
+    // The failed item should match the receipt handle or message id mapping.
+    // Our createEvent creates records mapped by index: msg-0, msg-1
+    expect(result.batchItemFailures[0].itemIdentifier).toBe('msg-1');
   });
 });

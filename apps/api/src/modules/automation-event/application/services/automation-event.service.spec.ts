@@ -30,8 +30,8 @@ describe('AutomationEventService', () => {
   it('should return early if no triggers match', async () => {
     triggerCache.getMatchingTriggers.mockResolvedValue([]);
     await service.ingest({
-      tenantId: 't1',
-      contactId: 'c1',
+      tenantId: 'tenant-1',
+      contactId: 'contact-1',
       event: 'contact.subscribed',
       occurredAt: '2024-01-01T00:00:00Z',
     });
@@ -40,18 +40,18 @@ describe('AutomationEventService', () => {
 
   it('should enqueue message if triggers match', async () => {
     triggerCache.getMatchingTriggers.mockResolvedValue([
-      { id: 'trig1', workflowId: 'wf1' },
-      { id: 'trig2', workflowId: 'wf1' },
+      { id: 'trig1', workflowId: 'workflow-1' },
+      { id: 'trig2', workflowId: 'workflow-1' },
     ]);
     await service.ingest({
-      tenantId: 't1',
-      contactId: 'c1',
+      tenantId: 'tenant-1',
+      contactId: 'contact-1',
       event: 'contact.subscribed',
       occurredAt: '2024-01-01T00:00:00Z',
     });
     expect(queueService.sendMessage).toHaveBeenCalledTimes(1);
     const message = queueService.sendMessage.mock.calls[0][1];
     expect(message.matchedTriggerIds).toEqual(['trig1', 'trig2']);
-    expect(message.matchedWorkflowIds).toEqual(['wf1']);
+    expect(message.matchedWorkflowIds).toEqual(['workflow-1']);
   });
 });

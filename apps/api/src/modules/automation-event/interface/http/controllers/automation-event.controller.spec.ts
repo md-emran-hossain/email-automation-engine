@@ -15,8 +15,8 @@ describe('AutomationEventController', () => {
 
   it('should call ingest and return accepted', async () => {
     const dto = {
-      tenantId: 't1',
-      contactId: 'c1',
+      tenantId: 'tenant-1',
+      contactId: 'contact-1',
       event: 'contact.subscribed' as const,
       occurredAt: '2024-01-01T00:00:00Z',
     };

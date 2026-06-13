@@ -76,19 +76,19 @@ export class TenantService {
     if (this.dataSource) {
       const savedTenant = await this.dataSource.transaction(async (manager) => {
         return execute(
-          (t) => manager.save(t),
-          (r) => manager.save(r),
-          (p) => manager.save(p),
-          (m) => manager.save(m),
+          (tenant) => manager.save(tenant),
+          (role) => manager.save(role),
+          (permission) => manager.save(permission),
+          (membership) => manager.save(membership),
         );
       });
       return this.mapToResponse(savedTenant);
     } else {
       const savedTenant = await execute(
-        (t) => this.tenantRepo.save(t),
-        (r) => this.roleRepo.save(r),
-        (p) => this.roleRepo.savePermission(p),
-        (m) => this.membershipRepo.save(m),
+        (tenant) => this.tenantRepo.save(tenant),
+        (role) => this.roleRepo.save(role),
+        (permission) => this.roleRepo.savePermission(permission),
+        (membership) => this.membershipRepo.save(membership),
       );
       return this.mapToResponse(savedTenant);
     }
@@ -110,14 +110,14 @@ export class TenantService {
 
   async findByUser(userId: string): Promise<TenantResponse[]> {
     const memberships = await this.membershipRepo.findMembershipsByUser(userId);
-    const tenantIds = memberships.map((m) => m.tenantId);
+    const tenantIds = memberships.map((membership) => membership.tenantId);
 
     const tenants = await this.tenantRepo.findByIds(tenantIds);
 
     const createdTenants = await this.tenantRepo.findByCreatorId(userId);
-    for (const t of createdTenants) {
-      if (!tenants.some((x) => x.id === t.id)) {
-        tenants.push(t);
+    for (const createdTenant of createdTenants) {
+      if (!tenants.some((existingTenant) => existingTenant.id === createdTenant.id)) {
+        tenants.push(createdTenant);
       }
     }
 

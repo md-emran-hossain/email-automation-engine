@@ -28,14 +28,14 @@ describe('TriggerCacheService', () => {
     cacheService.get.mockResolvedValue([
       {
         id: '1',
-        tenantId: 't1',
-        workflowId: 'w1',
-        event: 'e1',
+        tenantId: 'tenant-1',
+        workflowId: 'workflow-1',
+        event: 'event-1',
         createdAt: cachedAt,
         updatedAt: cachedAt,
       },
     ]);
-    const result = await service.getMatchingTriggers('t1', 'e1');
+    const result = await service.getMatchingTriggers('tenant-1', 'event-1');
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('1');
     expect(result[0].createdAt.toISOString()).toBe(cachedAt);
@@ -46,11 +46,11 @@ describe('TriggerCacheService', () => {
     cacheService.get.mockResolvedValue(null);
     triggerRepository.findActiveByEvent.mockResolvedValue([{ id: '2' }]);
 
-    const result = await service.getMatchingTriggers('t1', 'e1');
+    const result = await service.getMatchingTriggers('tenant-1', 'event-1');
     expect(result).toEqual([{ id: '2' }]);
-    expect(triggerRepository.findActiveByEvent).toHaveBeenCalledWith('t1', 'e1');
+    expect(triggerRepository.findActiveByEvent).toHaveBeenCalledWith('tenant-1', 'event-1');
     expect(cacheService.set).toHaveBeenCalledWith(
-      'automation:triggers:tenant:t1:event:e1',
+      'automation:triggers:tenant:tenant-1:event:event-1',
       [{ id: '2' }],
       300,
     );
@@ -60,8 +60,8 @@ describe('TriggerCacheService', () => {
     cacheService.get.mockRejectedValue(new Error('Redis down'));
     triggerRepository.findActiveByEvent.mockResolvedValue([{ id: '3' }]);
 
-    const result = await service.getMatchingTriggers('t1', 'e1');
+    const result = await service.getMatchingTriggers('tenant-1', 'event-1');
     expect(result).toEqual([{ id: '3' }]);
-    expect(triggerRepository.findActiveByEvent).toHaveBeenCalledWith('t1', 'e1');
+    expect(triggerRepository.findActiveByEvent).toHaveBeenCalledWith('tenant-1', 'event-1');
   });
 });

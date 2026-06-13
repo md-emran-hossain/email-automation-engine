@@ -27,8 +27,8 @@ export class AutomationEventService {
       return;
     }
 
-    const matchedTriggerIds = triggers.map((t) => t.id);
-    const matchedWorkflowIds = [...new Set(triggers.map((t) => t.workflowId))];
+    const matchedTriggerIds = triggers.map((trigger) => trigger.id);
+    const matchedWorkflowIds = Array.from(new Set(triggers.map((trigger) => trigger.workflowId)));
 
     const message: AutomationEventMessage = {
       version: 1,

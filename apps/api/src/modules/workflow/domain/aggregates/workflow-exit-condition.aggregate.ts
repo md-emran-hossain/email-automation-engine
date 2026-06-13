@@ -26,6 +26,9 @@ export class WorkflowExitCondition {
   workflowId!: string;
 
   @Column({ type: 'varchar', length: 50 })
+  logicalOperator!: string;
+
+  @Column({ type: 'varchar', length: 50 })
   type!: string;
 
   @Column({ type: 'varchar', length: 255 })

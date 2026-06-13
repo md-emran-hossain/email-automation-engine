@@ -23,6 +23,10 @@ export class CreateWorkflowExitConditionsTable1717401584210 implements Migration
             type: 'uuid',
           },
           {
+            name: 'logical_operator',
+            type: 'varchar(50)',
+          },
+          {
             name: 'type',
             type: 'varchar(50)',
           },

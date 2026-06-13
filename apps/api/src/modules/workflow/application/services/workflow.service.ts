@@ -314,8 +314,8 @@ export class WorkflowService {
             if (dnsError instanceof BadRequestException) throw dnsError;
             throw new BadRequestException(`A webhook step domain could not be resolved`);
           }
-        } catch (e) {
-          if (e instanceof BadRequestException) throw e;
+        } catch (error) {
+          if (error instanceof BadRequestException) throw error;
           throw new BadRequestException(`A webhook step has a malformed URL`);
         }
       }
@@ -376,6 +376,7 @@ export class WorkflowService {
       id: condition.id,
       tenantId: condition.tenantId,
       workflowId: condition.workflowId,
+      logicalOperator: condition.logicalOperator,
       type: condition.type,
       resource: condition.resource ?? undefined,
       operator: condition.operator,

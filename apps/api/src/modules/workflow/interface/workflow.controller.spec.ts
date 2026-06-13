@@ -4,7 +4,16 @@ import type { WorkflowService } from '../application/services/workflow.service';
 import type { WorkflowStepService } from '../application/services/workflow-step.service';
 import type { WorkflowTriggerService } from '../application/services/workflow-trigger.service';
 import type { WorkflowExitConditionService } from '../application/services/workflow-exit-condition.service';
-import type { WorkflowResponse } from '@email-automation-engine/shared';
+import type {
+  WorkflowResponse,
+  CreateWorkflowExitConditionDto,
+} from '@email-automation-engine/shared';
+import {
+  STEP_ACTIONS,
+  LOGICAL_OPERATORS,
+  CONDITION_TYPES,
+  CONDITION_OPERATORS,
+} from '@email-automation-engine/shared';
 
 describe('WorkflowController', () => {
   let controller: WorkflowController;
@@ -119,7 +128,7 @@ describe('WorkflowController', () => {
 
   describe('findStep', () => {
     it('should delegate to service findStep', async () => {
-      const mockStep = { id: 'step-1', action: 'send_email' };
+      const mockStep = { id: 'step-1', action: STEP_ACTIONS.SEND_EMAIL };
       stepService.findStep.mockResolvedValue(mockStep);
 
       const result = await controller.findStep('tenant-1', 'workflow-1', 'step-1');
@@ -150,7 +159,15 @@ describe('WorkflowController', () => {
     });
 
     it('should delegate replaceExitConditions to service', async () => {
-      const dtos = [{ type: 'tag', resource: 'unsubscribed', operator: 'equals', value: 'true' }];
+      const dtos: CreateWorkflowExitConditionDto[] = [
+        {
+          logicalOperator: LOGICAL_OPERATORS.ALL,
+          type: CONDITION_TYPES.TAG_HAS,
+          resource: 'unsubscribed',
+          operator: CONDITION_OPERATORS.EQUALS,
+          value: 'true',
+        },
+      ];
       exitConditionService.replaceExitConditions.mockResolvedValue([]);
 
       const result = await controller.replaceExitConditions('tenant-1', 'workflow-1', dtos);

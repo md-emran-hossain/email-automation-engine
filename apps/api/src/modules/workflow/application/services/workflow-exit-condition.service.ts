@@ -27,6 +27,7 @@ export class WorkflowExitConditionService {
     const condition = new WorkflowExitCondition();
     condition.tenantId = tenantId;
     condition.workflowId = workflowId;
+    condition.logicalOperator = dto.logicalOperator;
     condition.type = dto.type;
     condition.resource = dto.resource;
     condition.operator = dto.operator;
@@ -49,6 +50,7 @@ export class WorkflowExitConditionService {
       throw new NotFoundException('Exit condition not found');
     }
 
+    if (dto.logicalOperator !== undefined) condition.logicalOperator = dto.logicalOperator;
     if (dto.type !== undefined) condition.type = dto.type;
     if (dto.resource !== undefined) condition.resource = dto.resource;
     if (dto.operator !== undefined) condition.operator = dto.operator;
@@ -94,6 +96,7 @@ export class WorkflowExitConditionService {
       const condition = new WorkflowExitCondition();
       condition.tenantId = tenantId;
       condition.workflowId = workflowId;
+      condition.logicalOperator = dto.logicalOperator;
       condition.type = dto.type;
       condition.resource = dto.resource;
       condition.operator = dto.operator;
@@ -116,6 +119,7 @@ export class WorkflowExitConditionService {
       id: condition.id,
       tenantId: condition.tenantId,
       workflowId: condition.workflowId,
+      logicalOperator: condition.logicalOperator,
       type: condition.type,
       resource: condition.resource ?? undefined,
       operator: condition.operator,

@@ -199,9 +199,9 @@ describe('WorkflowService', () => {
       workflowRepo.findById.mockResolvedValue({ ...mockWorkflow });
       triggerRepo.findByWorkflowId.mockResolvedValue([{ id: 'trigger-1' }]);
       stepRepo.findByWorkflowId.mockResolvedValue([
-        { id: 'step-1', action: 'send_email', position: 0, config: { templateId: 't1' } },
+        { id: 'step-1', action: 'send_email', position: 0, config: { templateId: 'template-1' } },
       ]);
-      workflowRepo.save.mockImplementation((w: Workflow) => Promise.resolve(w));
+      workflowRepo.save.mockImplementation((workflow: Workflow) => Promise.resolve(workflow));
 
       const result = await service.activate('tenant-1', 'workflow-1');
       expect(result.isActive).toBe(true);
@@ -230,7 +230,7 @@ describe('WorkflowService', () => {
           id: 'step-2',
           action: 'send_email',
           position: 1,
-          config: { templateId: 't1' },
+          config: { templateId: 'template-1' },
           parentWorkflowStepId: 'step-1',
         },
       ]);

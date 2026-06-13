@@ -29,7 +29,10 @@ export async function handler(event: SqsBatchEvent, deps: WorkerDeps): Promise<S
       try {
         await processFinishWorkflowStep(record.message, deps);
       } catch (error) {
-        Logger.error(`Failed to process finish-workflow-steps for record ${record.messageId}`, error);
+        Logger.error(
+          `Failed to process finish-workflow-steps for record ${record.messageId}`,
+          error,
+        );
         batchItemFailures.push({ itemIdentifier: record.messageId });
       }
     }),

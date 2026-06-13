@@ -43,7 +43,8 @@ describe('start-workflow-steps.handler', () => {
 
   it('should process a delay step', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM contact_workflows')) return [{ id: 'contact-workflow-1', status: 'pending' }];
+      if (query.includes('FROM contact_workflows'))
+        return [{ id: 'contact-workflow-1', status: 'pending' }];
       if (query.includes('INSERT INTO contact_workflow_steps')) return [{ id: 'step1' }];
       if (query.includes('FROM workflow_steps')) return [{ config: { amount: 2, unit: 'days' } }];
       return [];
@@ -63,7 +64,8 @@ describe('start-workflow-steps.handler', () => {
 
   it('should process a simple action and enqueue finish', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM contact_workflows')) return [{ id: 'contact-workflow-1', status: 'in_progress' }];
+      if (query.includes('FROM contact_workflows'))
+        return [{ id: 'contact-workflow-1', status: 'in_progress' }];
       if (query.includes('INSERT INTO contact_workflow_steps')) return [{ id: 'step1' }];
       if (query.includes('FROM workflow_steps')) return [{ config: { tagId: 'tag1' } }];
       return [];
@@ -85,7 +87,8 @@ describe('start-workflow-steps.handler', () => {
 
   it('should route send_email to workflow-emails.fifo', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM contact_workflows')) return [{ id: 'contact-workflow-1', status: 'in_progress' }];
+      if (query.includes('FROM contact_workflows'))
+        return [{ id: 'contact-workflow-1', status: 'in_progress' }];
       if (query.includes('INSERT INTO contact_workflow_steps')) return [{ id: 'step1' }];
       if (query.includes('FROM workflow_steps')) return [{ config: {} }];
       return [];
@@ -124,7 +127,8 @@ describe('start-workflow-steps.handler', () => {
 
   it('should skip if workflow is already finished', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
-      if (query.includes('FROM contact_workflows')) return [{ id: 'contact-workflow-1', status: 'finished' }];
+      if (query.includes('FROM contact_workflows'))
+        return [{ id: 'contact-workflow-1', status: 'finished' }];
       return [];
     });
 

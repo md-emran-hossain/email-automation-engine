@@ -5,6 +5,7 @@ import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
+import { CONDITION_TYPES, STEP_ACTIONS, LOGICAL_OPERATORS } from '@email-automation-engine/shared';
 
 describe('finish-workflow-steps.handler', () => {
   let queueService: Mocked<QueueService>;
@@ -21,12 +22,25 @@ describe('finish-workflow-steps.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
+
+  const validMsg = {
+    version: 1,
+    messageId: '77777777-7777-4777-a777-777777777777',
+    tenantId: '11111111-1111-4111-a111-111111111111',
+    createdAt: '2024-01-01T00:00:00Z',
+    contactId: '22222222-2222-4222-a222-222222222222',
+    contactWorkflowId: '66666666-6666-4666-a666-666666666666',
+    workflowId: '33333333-3333-4333-a333-333333333333',
+    workflowStepId: '44444444-4444-4444-a444-444444444444',
+    contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
+    action: STEP_ACTIONS.DELAY,
+  };
 
   it('should process and enqueue next step', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
@@ -34,25 +48,15 @@ describe('finish-workflow-steps.handler', () => {
         return [{ id: 'cw_step_1', status: 'pending' }];
       if (query.includes('UPDATE contact_workflow_steps')) return [];
       if (query.includes('FROM workflow_steps WHERE id ='))
-        return [{ id: 'ws1', position: 1, action: 'delay' }]; // For current step
+        return [{ id: 'ws1', position: 1, action: STEP_ACTIONS.DELAY }]; // For current step
       if (query.includes('FROM workflow_steps WHERE workflow_id =')) return [{ id: 'ws2' }]; // For next step query
-      if (query.includes('SELECT action FROM workflow_steps')) return [{ action: 'send_email' }]; // For next step action query
+      if (query.includes('SELECT action FROM workflow_steps'))
+        return [{ action: STEP_ACTIONS.SEND_EMAIL }]; // For next step action query
       if (query.includes('FROM workflow_exit_conditions')) return [];
       return [];
     });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'delay',
-    };
+    const msg = { ...validMsg };
 
     const result = await handler(createEvent([msg]), {
       queueService,
@@ -74,24 +78,13 @@ describe('finish-workflow-steps.handler', () => {
         return [{ id: 'cw_step_1', status: 'pending' }];
       if (query.includes('UPDATE contact_workflow_steps')) return [];
       if (query.includes('FROM workflow_steps WHERE id ='))
-        return [{ id: 'ws1', position: 1, action: 'delay' }];
+        return [{ id: 'ws1', position: 1, action: STEP_ACTIONS.DELAY }];
       if (query.includes('FROM workflow_steps WHERE workflow_id =')) return []; // No next step
       if (query.includes('FROM workflow_exit_conditions')) return [];
       return [];
     });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'delay',
-    };
+    const msg = { ...validMsg };
 
     const result = await handler(createEvent([msg]), {
       queueService,
@@ -116,28 +109,20 @@ describe('finish-workflow-steps.handler', () => {
           {
             id: 'ws1',
             position: 1,
-            action: 'conditional_split',
+            action: STEP_ACTIONS.CONDITIONAL_SPLIT,
             true_step_id: 'true_step',
             false_step_id: 'false_step',
           },
         ];
       if (query.includes('FROM workflow_steps WHERE id = $1') && !query.includes('position'))
-        return [{ action: 'send_email' }]; // Fetching next step action
+        return [{ action: STEP_ACTIONS.SEND_EMAIL }]; // Fetching next step action
       if (query.includes('FROM workflow_exit_conditions')) return [];
       return [];
     });
 
     const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'conditional_split',
+      ...validMsg,
+      action: STEP_ACTIONS.CONDITIONAL_SPLIT,
       conditionalSplitResult: true,
     };
 
@@ -160,26 +145,17 @@ describe('finish-workflow-steps.handler', () => {
       if (query.includes('FROM contact_workflow_steps'))
         return [{ id: 'cw_step_1', status: 'pending' }];
       if (query.includes('FROM workflow_steps WHERE id ='))
-        return [{ id: 'ws1', position: 1, action: 'delay' }];
+        return [{ id: 'ws1', position: 1, action: STEP_ACTIONS.DELAY }];
       if (query.includes('FROM workflow_exit_conditions'))
-        return [{ type: 'contact_unsubscribed' }];
+        return [
+          { type: CONDITION_TYPES.CONTACT_UNSUBSCRIBED, logical_operator: LOGICAL_OPERATORS.ANY },
+        ];
       if (query.includes('FROM contacts')) return [{ subscribed: false }]; // Contact is unsubscribed, matches condition
       if (query.includes('FROM contact_tags')) return [];
       return [];
     });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'delay',
-    };
+    const msg = { ...validMsg };
 
     const result = await handler(createEvent([msg]), {
       queueService,
@@ -203,18 +179,7 @@ describe('finish-workflow-steps.handler', () => {
       return [];
     });
 
-    const msg = {
-      version: 1,
-      messageId: '77777777-7777-4777-a777-777777777777',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'delay',
-    };
+    const msg = { ...validMsg };
 
     const result = await handler(createEvent([msg]), {
       queueService,
@@ -234,24 +199,11 @@ describe('finish-workflow-steps.handler', () => {
         return [{ id: 'cw_step_1', status: 'pending' }];
       if (query.includes('UPDATE contact_workflow_steps')) return [];
       if (query.includes('FROM workflow_steps WHERE id ='))
-        return [{ id: 'ws1', position: 1, action: 'delay' }];
+        return [{ id: 'ws1', position: 1, action: STEP_ACTIONS.DELAY }];
       if (query.includes('FROM workflow_steps WHERE workflow_id =')) return []; // No next step
       if (query.includes('FROM workflow_exit_conditions')) return [];
       return [];
     });
-
-    const validMsg = {
-      version: 1,
-      messageId: '11111111-1111-4111-a111-111111111111',
-      tenantId: '11111111-1111-4111-a111-111111111111',
-      createdAt: '2024-01-01T00:00:00Z',
-      contactId: '22222222-2222-4222-a222-222222222222',
-      contactWorkflowId: '66666666-6666-4666-a666-666666666666',
-      workflowId: '33333333-3333-4333-a333-333333333333',
-      workflowStepId: '44444444-4444-4444-a444-444444444444',
-      contactWorkflowStepId: '55555555-5555-4555-a555-555555555555',
-      action: 'delay',
-    };
 
     const failedMsg = {
       ...validMsg,

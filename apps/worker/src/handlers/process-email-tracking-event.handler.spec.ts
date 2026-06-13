@@ -5,6 +5,7 @@ import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
+import { EMAIL_TRACKING_EVENTS } from '@email-automation-engine/shared';
 
 vi.mock('../infrastructure', () => ({
   workerConfig: {
@@ -29,10 +30,10 @@ describe('process-email-tracking-event.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
 
@@ -43,7 +44,7 @@ describe('process-email-tracking-event.handler', () => {
     createdAt: new Date().toISOString(),
     contactId: '33333333-3333-4333-a333-333333333333',
     emailMessageId: '44444444-4444-4444-a444-444444444444',
-    eventType: 'opened',
+    eventType: EMAIL_TRACKING_EVENTS.OPENED,
     occurredAt: new Date().toISOString(),
   };
 
@@ -82,7 +83,7 @@ describe('process-email-tracking-event.handler', () => {
     expect(queueService.sendMessage).toHaveBeenCalledWith(
       'automation-events',
       expect.objectContaining({
-        event: 'email.opened',
+        event: `email.${EMAIL_TRACKING_EVENTS.OPENED}`,
         contactId: 'c-1',
       }),
     );

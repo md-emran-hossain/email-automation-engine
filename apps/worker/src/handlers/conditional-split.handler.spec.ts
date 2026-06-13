@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handler } from './conditional-split.handler';
 import type { SqsBatchEvent } from '../infrastructure/queue/sqs-record.parser';
 import type { Mocked } from 'vitest';
+import { CONDITION_TYPES, STEP_ACTIONS } from '@email-automation-engine/shared';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
@@ -29,10 +30,10 @@ describe('conditional-split.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
 
@@ -46,13 +47,13 @@ describe('conditional-split.handler', () => {
     workflowId: '55555555-5555-4555-a555-555555555555',
     workflowStepId: '66666666-6666-4666-a666-666666666666',
     contactWorkflowStepId: '77777777-7777-4777-a777-777777777777',
-    action: 'conditional_split',
+    action: STEP_ACTIONS.CONDITIONAL_SPLIT,
   };
 
   it('routes to true branch when condition evaluates true', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
       if (query.includes('workflow_step_conditions')) {
-        return [{ type: 'tag_has', resource: 'tag-1', logical_operator: 'AND' }];
+        return [{ type: CONDITION_TYPES.TAG_HAS, resource: 'tag-1', logical_operator: 'ALL' }];
       }
       if (query.includes('contacts WHERE id')) {
         return [{ metadata: {} }];
@@ -86,7 +87,7 @@ describe('conditional-split.handler', () => {
   it('routes to false branch when condition evaluates false', async () => {
     dataSource.query.mockImplementation(async (query: string) => {
       if (query.includes('workflow_step_conditions')) {
-        return [{ type: 'tag_has', resource: 'tag-1', logical_operator: 'AND' }];
+        return [{ type: CONDITION_TYPES.TAG_HAS, resource: 'tag-1', logical_operator: 'ALL' }];
       }
       if (query.includes('contacts WHERE id')) {
         return [{ metadata: {} }];

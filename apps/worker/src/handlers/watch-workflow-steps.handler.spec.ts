@@ -3,6 +3,7 @@ import { handler } from './watch-workflow-steps.handler';
 import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
+import { STEP_ACTIONS } from '@email-automation-engine/shared';
 
 describe('watch-workflow-steps.handler', () => {
   let queueService: Mocked<QueueService>;
@@ -23,13 +24,13 @@ describe('watch-workflow-steps.handler', () => {
       if (query.includes('SELECT')) {
         return [
           {
-            contact_workflow_step_id: 'cws1',
-            tenant_id: 't1',
-            contact_workflow_id: 'cw1',
-            workflow_step_id: 'ws1',
-            contact_id: 'c1',
-            workflow_id: 'wf1',
-            action: 'delay',
+            contact_workflow_step_id: 'contact-workflow-step-1',
+            tenant_id: 'tenant-1',
+            contact_workflow_id: 'contact-workflow-1',
+            workflow_step_id: 'workflow-step-1',
+            contact_id: 'contact-1',
+            workflow_id: 'workflow-1',
+            action: STEP_ACTIONS.DELAY,
           },
         ];
       }
@@ -44,8 +45,8 @@ describe('watch-workflow-steps.handler', () => {
       action: string;
       contactWorkflowId: string;
     };
-    expect(queuedMsg.action).toBe('delay');
-    expect(queuedMsg.contactWorkflowId).toBe('cw1');
+    expect(queuedMsg.action).toBe(STEP_ACTIONS.DELAY);
+    expect(queuedMsg.contactWorkflowId).toBe('contact-workflow-1');
   });
 
   it('should skip if no due steps', async () => {
@@ -61,36 +62,36 @@ describe('watch-workflow-steps.handler', () => {
       if (query.includes('SELECT')) {
         return [
           {
-            contact_workflow_step_id: 'cws1',
-            tenant_id: 't1',
-            contact_workflow_id: 'cw1',
-            workflow_step_id: 'ws1',
-            contact_id: 'c1',
-            workflow_id: 'wf1',
-            action: 'delay',
+            contact_workflow_step_id: 'contact-workflow-step-1',
+            tenant_id: 'tenant-1',
+            contact_workflow_id: 'contact-workflow-1',
+            workflow_step_id: 'workflow-step-1',
+            contact_id: 'contact-1',
+            workflow_id: 'workflow-1',
+            action: STEP_ACTIONS.DELAY,
           },
           {
-            contact_workflow_step_id: 'cws2', // This one will throw
-            tenant_id: 't1',
-            contact_workflow_id: 'cw2',
-            workflow_step_id: 'ws2',
-            contact_id: 'c2',
-            workflow_id: 'wf1',
-            action: 'delay',
+            contact_workflow_step_id: 'contact-workflow-step-2', // This one will throw
+            tenant_id: 'tenant-1',
+            contact_workflow_id: 'contact-workflow-2',
+            workflow_step_id: 'workflow-step-2',
+            contact_id: 'contact-2',
+            workflow_id: 'workflow-1',
+            action: STEP_ACTIONS.DELAY,
           },
           {
-            contact_workflow_step_id: 'cws3',
-            tenant_id: 't1',
-            contact_workflow_id: 'cw3',
-            workflow_step_id: 'ws3',
-            contact_id: 'c3',
-            workflow_id: 'wf1',
-            action: 'delay',
+            contact_workflow_step_id: 'contact-workflow-step-3',
+            tenant_id: 'tenant-1',
+            contact_workflow_id: 'contact-workflow-3',
+            workflow_step_id: 'workflow-step-3',
+            contact_id: 'contact-3',
+            workflow_id: 'workflow-1',
+            action: STEP_ACTIONS.DELAY,
           },
         ];
       }
       if (query.includes('UPDATE')) {
-        if (params && params[0] === 'cws2') {
+        if (params && params[0] === 'contact-workflow-step-2') {
           throw new Error('Database disconnected during update');
         }
         return [{ id: params ? params[0] : 'unknown' }]; // Return success for others
@@ -105,8 +106,8 @@ describe('watch-workflow-steps.handler', () => {
     const firstCall = queueService.sendMessage.mock.calls[0][1] as { contactWorkflowId: string };
     const secondCall = queueService.sendMessage.mock.calls[1][1] as { contactWorkflowId: string };
 
-    expect(firstCall.contactWorkflowId).toBe('cw1');
-    expect(secondCall.contactWorkflowId).toBe('cw3');
+    expect(firstCall.contactWorkflowId).toBe('contact-workflow-1');
+    expect(secondCall.contactWorkflowId).toBe('contact-workflow-3');
   });
 
   it('should skip step if already picked up by another worker (idempotency)', async () => {
@@ -114,13 +115,13 @@ describe('watch-workflow-steps.handler', () => {
       if (query.includes('SELECT')) {
         return [
           {
-            contact_workflow_step_id: 'cws1',
-            tenant_id: 't1',
-            contact_workflow_id: 'cw1',
-            workflow_step_id: 'ws1',
-            contact_id: 'c1',
-            workflow_id: 'wf1',
-            action: 'delay',
+            contact_workflow_step_id: 'contact-workflow-step-1',
+            tenant_id: 'tenant-1',
+            contact_workflow_id: 'contact-workflow-1',
+            workflow_step_id: 'workflow-step-1',
+            contact_id: 'contact-1',
+            workflow_id: 'workflow-1',
+            action: STEP_ACTIONS.DELAY,
           },
         ];
       }

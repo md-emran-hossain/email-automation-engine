@@ -5,6 +5,7 @@ import type { Mocked } from 'vitest';
 import type { DataSource } from 'typeorm';
 import type { QueueService } from '../infrastructure/queue/queue.interface';
 import type { CacheService } from '../infrastructure/cache/cache.interface';
+import { STEP_ACTIONS } from '@email-automation-engine/shared';
 
 const mockSend = vi.fn();
 vi.mock('@aws-sdk/client-ses', () => {
@@ -43,10 +44,10 @@ describe('send-workflow-email.handler', () => {
   });
 
   const createEvent = (messages: Record<string, unknown>[]): SqsBatchEvent => ({
-    Records: messages.map((m, i) => ({
-      messageId: `msg-${i}`,
-      receiptHandle: `handle-${i}`,
-      body: JSON.stringify(m),
+    Records: messages.map((message, index) => ({
+      messageId: `msg-${index}`,
+      receiptHandle: `handle-${index}`,
+      body: JSON.stringify(message),
     })),
   });
 
@@ -60,7 +61,7 @@ describe('send-workflow-email.handler', () => {
     workflowId: '55555555-5555-4555-a555-555555555555',
     workflowStepId: '66666666-6666-4666-a666-666666666666',
     contactWorkflowStepId: '77777777-7777-4777-a777-777777777777',
-    action: 'send_email',
+    action: STEP_ACTIONS.SEND_EMAIL,
   };
 
   it('should process a valid message and send email', async () => {

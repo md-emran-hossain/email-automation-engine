@@ -10,7 +10,7 @@ export interface SchedulerDeps {
 }
 
 export async function handler(event: unknown, deps: SchedulerDeps): Promise<void> {
-  const { queueService, dataSource } = deps;
+  const { dataSource } = deps;
 
   const dueSteps = await dataSource.query<
     Array<{
@@ -38,32 +38,49 @@ export async function handler(event: unknown, deps: SchedulerDeps): Promise<void
     LIMIT 1000
   `);
 
+  await Promise.all(
+    dueSteps.map(async (step) => {
+      try {
+        await processScheduledStep(step, deps);
+      } catch (error) {
+        Logger.error(`Failed to process scheduled step ${step.contact_workflow_step_id}`, error);
+      }
+    }),
+  );
+}
+
+async function processScheduledStep(
+  step: {
+    contact_workflow_step_id: string;
+    tenant_id: string;
+    contact_workflow_id: string;
+    workflow_step_id: string;
+    contact_id: string;
+    workflow_id: string;
+    action: string;
+  },
+  deps: SchedulerDeps,
+): Promise<void> {
+  const { queueService, dataSource } = deps;
   const waitingUrl = workerConfig.WAITING_STEPS_QUEUE_URL;
+  const updateRes = await dataSource.query<Array<{ id: string }>>(
+    `UPDATE contact_workflow_steps SET status = 'pending', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING id`,
+    [step.contact_workflow_step_id],
+  );
 
-  for (const step of dueSteps) {
-    try {
-      const updateRes = await dataSource.query<Array<{ id: string }>>(
-        `UPDATE contact_workflow_steps SET status = 'pending', updated_at = now() WHERE id = $1 AND status = 'scheduled' RETURNING id`,
-        [step.contact_workflow_step_id],
-      );
+  // If no rows were updated, another worker might have picked it up
+  if (updateRes.length === 0) return;
 
-      // If no rows were updated, another worker might have picked it up
-      if (updateRes.length === 0) continue;
-
-      await queueService.sendMessage(waitingUrl, {
-        version: 1,
-        messageId: randomUUID(),
-        tenantId: step.tenant_id,
-        createdAt: new Date().toISOString(),
-        contactId: step.contact_id,
-        contactWorkflowId: step.contact_workflow_id,
-        contactWorkflowStepId: step.contact_workflow_step_id,
-        workflowId: step.workflow_id,
-        workflowStepId: step.workflow_step_id,
-        action: step.action,
-      });
-    } catch (err) {
-      Logger.error(`Failed to process scheduled step ${step.contact_workflow_step_id}`, err);
-    }
-  }
+  await queueService.sendMessage(waitingUrl, {
+    version: 1,
+    messageId: randomUUID(),
+    tenantId: step.tenant_id,
+    createdAt: new Date().toISOString(),
+    contactId: step.contact_id,
+    contactWorkflowId: step.contact_workflow_id,
+    contactWorkflowStepId: step.contact_workflow_step_id,
+    workflowId: step.workflow_id,
+    workflowStepId: step.workflow_step_id,
+    action: step.action,
+  });
 }

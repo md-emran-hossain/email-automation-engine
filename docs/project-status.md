@@ -115,6 +115,9 @@ Phase 5: Frontend Builder in progress.
   - Extracted dynamic UI form schemas (`StepFormSchema`, `TriggerFormSchema`) directly into `@email-automation-engine/shared` Zod contracts to ensure full "Write Once, Validate Everywhere" parity between the API payload and React Hook Form.
   - Eradicated all `any` casting and generic hacks from builder form validation.
   - Stripped out redundant backend validation methods (`validateDelayConfig`) because the Zod validation pipes fully process the shared schemas automatically.
+  - Implemented `useWorkflowExitConditions` hook and `ExitConditionsModal` component with dynamic fields.
+  - Implemented the full backend layer for `workflow_step_conditions` (Zod schemas, TypeORM Repository, Service, and Controller).
+  - Implemented `useWorkflowStepConditions` hook and `StepConditionsEditor` inside the builder sidebar for Conditional Split configuration.
 
 ## Blockers
 
@@ -177,4 +180,4 @@ Phase 5: Frontend Builder in progress.
 
 ## Next Exact Task
 
-Continue Phase 5: Frontend Builder. We have completed the Workflow Builder UI refactor (domain-driven hooks, React Flow integration, Zod schema validation forms). Next is likely the workflow list view, tenant creation/management, and execution summary.
+Continue Phase 5: Frontend Builder. We have completed the Workflow Builder UI refactor, Exit Conditions UI, and Conditional Split UI. Next is likely the Execution Summary view, Workflow List view polish, or Tenant creation/management.

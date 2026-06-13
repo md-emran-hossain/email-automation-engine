@@ -1,16 +1,19 @@
 import { Link } from 'react-router-dom';
 import { type WorkflowResponse } from '@email-automation-engine/shared';
+import { Settings } from 'lucide-react';
 
 interface BuilderHeaderProps {
   workflow: WorkflowResponse;
   onToggleActive: () => void;
   isTogglingActive: boolean;
+  onOpenExitConditions: () => void;
 }
 
 export default function BuilderHeader({
   workflow,
   onToggleActive,
   isTogglingActive,
+  onOpenExitConditions,
 }: BuilderHeaderProps) {
   return (
     <div className="h-14 border-b bg-white dark:bg-zinc-900 flex items-center px-4 justify-between shrink-0">
@@ -36,6 +39,13 @@ export default function BuilderHeader({
         </span>
       </div>
       <div className="flex items-center gap-3">
+        <button
+          onClick={onOpenExitConditions}
+          title="Workflow Settings"
+          className="p-2 border border-gray-300 dark:border-zinc-700 rounded-md shadow-sm text-gray-500 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-300 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
         <button
           onClick={onToggleActive}
           disabled={isTogglingActive}

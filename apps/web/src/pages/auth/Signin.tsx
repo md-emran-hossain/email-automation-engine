@@ -23,7 +23,7 @@ export default function Signin() {
     try {
       setError(null);
       await login(data);
-      void navigate('/');
+      void navigate('/workflows');
     } catch (err: unknown) {
       if (isAxiosError<{ message?: string }>(err)) {
         setError(err.response?.data?.message || 'Failed to sign in. Please try again.');

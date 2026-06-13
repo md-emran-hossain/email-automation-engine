@@ -23,7 +23,7 @@ export default function Signup() {
     try {
       setError(null);
       await registerUser(data);
-      void navigate('/');
+      void navigate('/workflows');
     } catch (err: unknown) {
       if (isAxiosError<{ message?: string }>(err)) {
         setError(err.response?.data?.message || 'Failed to sign up. Please try again.');

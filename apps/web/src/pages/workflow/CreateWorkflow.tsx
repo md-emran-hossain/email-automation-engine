@@ -41,7 +41,7 @@ export default function CreateWorkflow() {
     <div>
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Create workflow</h1>
 
-      <form onSubmit={void handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+      <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4 max-w-md">
         <div>
           <label
             htmlFor="create-workflow-name"

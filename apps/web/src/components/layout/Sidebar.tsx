@@ -9,7 +9,7 @@ import {
   Settings,
   User,
 } from 'lucide-react';
-import { type Dispatch, type SetStateAction, useEffect, useState } from 'react';
+import { type Dispatch, type SetStateAction, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -131,13 +131,9 @@ export default function Sidebar() {
   const { logout } = useAuth();
   const { currentTenant, tenants, setCurrentTenant } = useTenant();
   const navigate = useNavigate();
-  const [openGroup, setOpenGroup] = useState<string | null>(() =>
-    findActiveGroupPath(location.pathname),
+  const [openGroup, setOpenGroup] = useState<string | null>(
+    () => findActiveGroupPath(location.pathname) ?? '/contacts',
   );
-
-  useEffect(() => {
-    setOpenGroup(findActiveGroupPath(location.pathname));
-  }, [location.pathname]);
 
   const tenantDropdownItems = currentTenant
     ? [

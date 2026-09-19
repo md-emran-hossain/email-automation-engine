@@ -8,9 +8,9 @@
     "build": "tsc -b",
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src",
-    "format:check": "prettier --check package.json tsconfig.json vitest.config.ts src",
+    "format:check": "prettier --check package.json tsconfig.json vitest.config.ts vitest.integration.config.ts src",
     "test": "vitest run",
-    "test:integration": "vitest run --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts --passWithNoTests",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {

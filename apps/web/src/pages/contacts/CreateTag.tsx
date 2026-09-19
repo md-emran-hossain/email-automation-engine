@@ -41,10 +41,7 @@ export default function CreateTag() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create tag</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-xl border border-dashed rounded-xl p-6 space-y-5"
-      >
+      <form onSubmit={handleSubmit} className="max-w-xl rounded-xl p-6 space-y-5">
         <div>
           <label
             htmlFor="tag-name"
@@ -68,7 +65,7 @@ export default function CreateTag() {
             disabled={!name.trim() || createMutation.isPending}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {createMutation.isPending ? 'Creating...' : 'Create tag'}
+            {createMutation.isPending ? 'Creating...' : 'Create'}
           </button>
           <button
             type="button"

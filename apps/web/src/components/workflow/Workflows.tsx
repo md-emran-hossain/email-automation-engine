@@ -39,11 +39,11 @@ function WorkflowListItem({
     <li
       className={`first:rounded-t-xl last:rounded-b-xl hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors flex items-center pr-4 relative ${isDropdownOpen ? 'z-20' : 'z-0'}`}
     >
-      <Link to={`/workflows/${workflow.id}`} className="block p-4 sm:px-6 flex-1">
+      <Link to={`/workflows/${workflow.id}`} className="block p-4 sm:px-6 flex-1 min-w-0">
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-1">
-              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate overflow-hidden">
                 {workflow.name}
               </p>
               <span
@@ -140,7 +140,7 @@ export default function Workflows({
   onDelete: (id: string) => void;
 }) {
   return (
-    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl">
       <ul className="divide-y divide-gray-100 dark:divide-zinc-800/50">
         {workflows.map((workflow) => (
           <WorkflowListItem key={workflow.id} workflow={workflow} onDelete={onDelete} />

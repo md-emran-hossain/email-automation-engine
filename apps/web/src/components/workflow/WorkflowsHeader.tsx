@@ -14,9 +14,6 @@ export default function WorkflowsHeader() {
           Add New
         </Link>
       </div>
-      <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
-        Create and manage your automated email sequences.
-      </p>
     </div>
   );
 }

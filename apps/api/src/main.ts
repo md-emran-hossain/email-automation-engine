@@ -14,7 +14,7 @@ async function bootstrap(): Promise<void> {
 
   app.enableCors({
     origin: allowedOrigins === '*' ? '*' : allowedOrigins.split(','),
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods: 'GET,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 

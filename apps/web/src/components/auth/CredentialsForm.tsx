@@ -1,9 +1,9 @@
 import { type SigninDto, type SignupDto } from '@email-automation-engine/shared';
-import { type FormEvent, type InputHTMLAttributes } from 'react';
+import { type FormEventHandler, type InputHTMLAttributes } from 'react';
 import { type FieldErrors, type UseFormRegister } from 'react-hook-form';
 
 interface CredentialsFormProps {
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onSubmit: FormEventHandler<HTMLFormElement>;
   register: UseFormRegister<SigninDto> | UseFormRegister<SignupDto>;
   errors: FieldErrors<SigninDto> | FieldErrors<SignupDto>;
   isSubmitting: boolean;
@@ -55,6 +55,7 @@ export function CredentialsForm({
       />
       <Field
         {...register('password')}
+        id="password"
         label="Password"
         type="password"
         placeholder="••••••••"
@@ -63,7 +64,6 @@ export function CredentialsForm({
 
       <button
         type="submit"
-        disabled={isSubmitting}
         className="w-full py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
       >
         {isSubmitting ? submittingLabel : idleLabel}

@@ -23,6 +23,10 @@ export default function Signin() {
   });
 
   const onSubmit = async (data: SigninDto) => {
+    if (isSubmitting) {
+      return;
+    }
+
     try {
       setError(null);
       await login(data);

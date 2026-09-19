@@ -11,7 +11,6 @@ import { useParams } from 'react-router-dom';
 
 import AddNode from '../../components/modals/AddNode';
 import AddTrigger from '../../components/modals/AddTrigger';
-import Alert from '../../components/modals/Alert';
 import { AddStep as AddStepNode } from '../../components/workflow/builder/AddStep';
 import { AddTrigger as AddTriggerNode } from '../../components/workflow/builder/AddTrigger';
 import BuilderHeader from '../../components/workflow/builder/BuilderHeader';
@@ -22,6 +21,7 @@ import Sidebar from '../../components/workflow/builder/Sidebar';
 import { StepNode } from '../../components/workflow/builder/StepNode';
 import { TriggerNode } from '../../components/workflow/builder/TriggerNode';
 import { useTenant } from '../../contexts/TenantContext';
+import { toast } from '../../lib/toast';
 import { useWorkflow } from './hooks/useWorkflow';
 import { useDragAndDropReorder, useWorkflowGraphSync } from './hooks/useWorkflowBuilder';
 import { useWorkflowSteps } from './hooks/useWorkflowSteps';
@@ -54,7 +54,6 @@ function WorkflowBuilderContent() {
   const [addNodeConfig, setAddNodeConfig] = useState<AddNodeConfig>(null);
   const [isAddTriggerModalOpen, setIsAddTriggerModalOpen] = useState(false);
   const [isExitConditionsModalOpen, setIsExitConditionsModalOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState<string | string[] | null>(null);
 
   const { workflow, isLoading: isLoadingWorkflow, toggleActive } = useWorkflow(workflowId);
   const { steps, isLoading: isLoadingSteps, addStep } = useWorkflowSteps(workflowId);
@@ -109,10 +108,12 @@ function WorkflowBuilderContent() {
   const handleToggleActive = () => {
     toggleActive.mutate(undefined, {
       onError: (err: Error) => {
-        const axiosErr = err as AxiosError<{ message: string | string[] }>;
-        setAlertMessage(
-          axiosErr?.response?.data?.message || err.message || 'Failed to toggle activation',
-        );
+        const axiosErr = err as AxiosError<{ message?: string | string[] }>;
+        const responseMessage = axiosErr?.response?.data?.message;
+        const message = Array.isArray(responseMessage)
+          ? responseMessage.join(', ')
+          : responseMessage;
+        toast.error(message || err.message || 'Failed to toggle activation');
       },
     });
   };
@@ -195,13 +196,6 @@ function WorkflowBuilderContent() {
             addTrigger.mutate(event, { onSuccess: () => setIsAddTriggerModalOpen(false) })
           }
           isPending={addTrigger.isPending}
-        />
-
-        <Alert
-          isOpen={!!alertMessage}
-          onClose={() => setAlertMessage(null)}
-          title="Activation Failed"
-          description={alertMessage || ''}
         />
 
         <ExitConditionsModal

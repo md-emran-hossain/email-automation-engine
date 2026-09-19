@@ -37,8 +37,7 @@ export default function CsvFileDropzone({
               <span className="text-indigo-600 dark:text-indigo-400 font-medium">browse</span>
             </p>
             <p className="text-xs text-gray-400 dark:text-zinc-500 mt-2">
-              CSV should have an "email" column. Optional: "subscribed", plus any metadata
-              columns.
+              CSV should have an "email" column. Optional: "subscribed", plus any metadata columns.
             </p>
           </>
         )}

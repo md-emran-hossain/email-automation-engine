@@ -8,8 +8,7 @@ type Tab = 'import' | 'single';
 
 const TAB_BUTTON =
   'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors';
-const TAB_ACTIVE =
-  'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400';
+const TAB_ACTIVE = 'border-indigo-600 text-indigo-600 dark:text-indigo-400 dark:border-indigo-400';
 const TAB_INACTIVE =
   'border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300';
 

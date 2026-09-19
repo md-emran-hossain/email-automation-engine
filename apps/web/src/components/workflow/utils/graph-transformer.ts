@@ -88,7 +88,7 @@ class WorkflowGraphBuilder {
           id: addStepBtnId,
           type: 'addStepNode',
           position: { x: 0, y: 0 },
-          data: { onAddNode, isDragging },
+          data: { parentId: null, branch: 'linear' as const, onAddNode, isDragging },
         },
         DIMENSIONS.BTN_SIZE,
         DIMENSIONS.BTN_SIZE,

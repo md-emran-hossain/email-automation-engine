@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { useTenant } from '../../contexts/TenantContext';
 import api from '../../lib/api';
+import { toast } from '../../lib/toast';
 
 export default function CreateWorkflow() {
   const { currentTenant } = useTenant();
@@ -29,7 +30,11 @@ export default function CreateWorkflow() {
       return res.data;
     },
     onSuccess: (workflow) => {
+      toast.success('Workflow created successfully');
       void navigate(`/workflows/${workflow.id}`);
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to create workflow');
     },
   });
 

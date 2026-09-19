@@ -7,9 +7,9 @@
     "build": "tsc -b && vite build",
     "dev": "vite",
     "lint": "eslint src",
-    "format:check": "prettier --check package.json tsconfig.json vite.config.ts vitest.config.ts index.html src",
+    "format:check": "prettier --check package.json tsconfig.json vite.config.ts vitest.config.ts vitest.integration.config.ts index.html src",
     "test": "vitest run",
-    "test:integration": "vitest run --passWithNoTests",
+    "test:integration": "vitest run --config vitest.integration.config.ts --passWithNoTests",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {

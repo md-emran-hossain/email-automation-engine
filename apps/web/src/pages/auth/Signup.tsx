@@ -23,6 +23,10 @@ export default function Signup() {
   });
 
   const onSubmit = async (data: SignupDto) => {
+    if (isSubmitting) {
+      return;
+    }
+
     try {
       setError(null);
       await registerUser(data);

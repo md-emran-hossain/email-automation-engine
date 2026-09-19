@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import Sidebar from './components/layout/Sidebar';
+import ToastContainer from './components/shared/Toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TenantProvider, useTenant } from './contexts/TenantContext';
 import Signin from './pages/auth/Signin';
@@ -106,6 +107,7 @@ export default function App() {
           />
         </Routes>
       </AuthProvider>
+      <ToastContainer />
     </BrowserRouter>
   );
 }
